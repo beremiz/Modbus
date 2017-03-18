@@ -374,16 +374,16 @@ static int read_bits_u32(u8  function,
 /* FUNCTION 0x01   - Read Coils
  * Bits are stored on an int array, one bit per int.
  */
-inline int read_output_bits(u8  slave,
-                            u16 start_addr,
-                            u16 count,
-                            u16 *dest,
-                            int dest_size,
-                            int ttyfd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex) {
+int read_output_bits(u8  slave,
+                     u16 start_addr,
+                     u16 count,
+                     u16 *dest,
+                     int dest_size,
+                     int ttyfd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex) {
   if( count > MAX_READ_BITS ) {
     count = MAX_READ_BITS;
     #ifdef DEBUG
@@ -402,14 +402,14 @@ inline int read_output_bits(u8  slave,
  * Bits are stored on an u32 array, 32 bits per u32.
  * Unused bits in last u32 are set to 0.
  */
-inline int read_output_bits_u32(u8  slave,
-                                u16 start_addr,
-                                u16 count,
-                                u32 *dest,
-                                int ttyfd,
-                                int send_retries,
-                                u8  *error_code,
-                                const struct timespec *response_timeout) {
+int read_output_bits_u32(u8  slave,
+                         u16 start_addr,
+                         u16 count,
+                         u32 *dest,
+                         int ttyfd,
+                         int send_retries,
+                         u8  *error_code,
+                         const struct timespec *response_timeout) {
   if( count > MAX_READ_BITS ) {
     count = MAX_READ_BITS;
     #ifdef DEBUG
@@ -426,16 +426,16 @@ inline int read_output_bits_u32(u8  slave,
 /* FUNCTION 0x02   - Read Discrete Inputs
  * Bits are stored on an int array, one bit per int.
  */
-inline int read_input_bits(u8  slave,
-                           u16 start_addr,
-                           u16 count,
-                           u16 *dest,
-                           int dest_size,
-                           int ttyfd,
-                           int send_retries,
-                           u8  *error_code,
-                           const struct timespec *response_timeout,
-                           pthread_mutex_t *data_access_mutex) {
+int read_input_bits(u8  slave,
+                    u16 start_addr,
+                    u16 count,
+                    u16 *dest,
+                    int dest_size,
+                    int ttyfd,
+                    int send_retries,
+                    u8  *error_code,
+                    const struct timespec *response_timeout,
+                    pthread_mutex_t *data_access_mutex) {
   if( count > MAX_READ_BITS ) {
     count = MAX_READ_BITS;
     #ifdef DEBUG
@@ -454,14 +454,14 @@ inline int read_input_bits(u8  slave,
  * Bits are stored on an u32 array, 32 bits per u32.
  * Unused bits in last u32 are set to 0.
  */
-inline int read_input_bits_u32(u8  slave,
-                               u16 start_addr,
-                               u16 count,
-                               u32 *dest,
-                               int ttyfd,
-                               int send_retries,
-                               u8  *error_code,
-                               const struct timespec *response_timeout) {
+int read_input_bits_u32(u8  slave,
+                        u16 start_addr,
+                        u16 count,
+                        u32 *dest,
+                        int ttyfd,
+                        int send_retries,
+                        u8  *error_code,
+                        const struct timespec *response_timeout) {
   if( count > MAX_READ_BITS ) {
     count = MAX_READ_BITS;
     #ifdef DEBUG
@@ -657,16 +657,16 @@ static int read_registers_u32(u8  function,
 
 
 /* FUNCTION 0x03   - Read Holding Registers */
-inline int read_output_words(u8  slave,
-                             u16 start_addr,
-                             u16 count,
-                             u16 *dest,
-                             int dest_size,
-                             int ttyfd,
-                             int send_retries,
-                             u8  *error_code,
-                             const struct timespec *response_timeout,
-                             pthread_mutex_t *data_access_mutex) {
+int read_output_words(u8  slave,
+                      u16 start_addr,
+                      u16 count,
+                      u16 *dest,
+                      int dest_size,
+                      int ttyfd,
+                      int send_retries,
+                      u8  *error_code,
+                      const struct timespec *response_timeout,
+                      pthread_mutex_t *data_access_mutex) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -686,14 +686,14 @@ inline int read_output_words(u8  slave,
  * u16 registers are stored in array of u32, two registers per u32.
  * Unused bits of last u32 element are set to 0.
  */
-inline int read_output_words_u32(u8  slave,
-                                 u16 start_addr,
-                                 u16 count,
-                                 u32 *dest,
-                                 int ttyfd,
-                                 int send_retries,
-                                 u8  *error_code,
-                                 const struct timespec *response_timeout) {
+int read_output_words_u32(u8  slave,
+                          u16 start_addr,
+                          u16 count,
+                          u32 *dest,
+                          int ttyfd,
+                          int send_retries,
+                          u8  *error_code,
+                          const struct timespec *response_timeout) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -712,14 +712,14 @@ inline int read_output_words_u32(u8  slave,
 /* FUNCTION 0x03   - Read Holding Registers
  * return the array with the data to the calling function
  */
-inline int read_output_words_u16_ref(u8  slave,
-                                     u16 start_addr,
-                                     u16 count,
-                                     u16 **dest,
-                                     int ttyfd,
-                                     int send_retries,
-                                     u8  *error_code,
-                                     const struct timespec *response_timeout) {
+int read_output_words_u16_ref(u8  slave,
+                              u16 start_addr,
+                              u16 count,
+                              u16 **dest,
+                              int ttyfd,
+                              int send_retries,
+                              u8  *error_code,
+                              const struct timespec *response_timeout) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -736,16 +736,16 @@ inline int read_output_words_u16_ref(u8  slave,
 
 
 /* FUNCTION 0x04   - Read Input Registers */
-inline int read_input_words(u8  slave,
-                            u16 start_addr,
-                            u16 count,
-                            u16 *dest,
-                            int dest_size,
-                            int ttyfd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex) {
+int read_input_words(u8  slave,
+                     u16 start_addr,
+                     u16 count,
+                     u16 *dest,
+                     int dest_size,
+                     int ttyfd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -763,14 +763,14 @@ inline int read_input_words(u8  slave,
  * u16 registers are stored in array of u32, two registers per u32.
  * Unused bits of last u32 element are set to 0.
  */
-inline int read_input_words_u32(u8  slave,
-                                u16 start_addr,
-                                u16 count,
-                                u32 *dest,
-                                int ttyfd,
-                                int send_retries,
-                                u8  *error_code,
-                                const struct timespec *response_timeout) {
+int read_input_words_u32(u8  slave,
+                         u16 start_addr,
+                         u16 count,
+                         u32 *dest,
+                         int ttyfd,
+                         int send_retries,
+                         u8  *error_code,
+                         const struct timespec *response_timeout) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -789,14 +789,14 @@ inline int read_input_words_u32(u8  slave,
 /* FUNCTION 0x04   - Read Input Registers
  * return the array with the data to the calling function
  */
-inline int read_input_words_u16_ref(u8  slave,
-                                    u16 start_addr,
-                                    u16 count,
-                                    u16 **dest,
-                                    int ttyfd,
-                                    int send_retries,
-                                    u8  *error_code,
-                                    const struct timespec *response_timeout) {
+int read_input_words_u16_ref(u8  slave,
+                             u16 start_addr,
+                             u16 count,
+                             u16 **dest,
+                             int ttyfd,
+                             int send_retries,
+                             u8  *error_code,
+                             const struct timespec *response_timeout) {
   if( count > MAX_READ_REGS ) {
     count = MAX_READ_REGS;
     #ifdef DEBUG
@@ -852,14 +852,14 @@ static int set_single(u8  function,
 
 
 /* FUNCTION 0x05   - Force Single Coil */
-inline int write_output_bit(u8  slave,
-                            u16 coil_addr,
-                            u16 state,
-                            int fd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex) {
+int write_output_bit(u8  slave,
+                     u16 coil_addr,
+                     u16 state,
+                     int fd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex) {
   if (state) state = 0xFF00;
   
   return set_single(0x05 /* function */,
@@ -872,14 +872,14 @@ inline int write_output_bit(u8  slave,
 
 
 /* FUNCTION 0x06   - Write Single Register */
-inline int write_output_word(u8  slave,
-                             u16 reg_addr,
-                             u16 value,
-                             int fd,
-                             int send_retries,
-                             u8  *error_code,
-                             const struct timespec *response_timeout,
-                             pthread_mutex_t *data_access_mutex) {
+int write_output_word(u8  slave,
+                      u16 reg_addr,
+                      u16 value,
+                      int fd,
+                      int send_retries,
+                      u8  *error_code,
+                      const struct timespec *response_timeout,
+                      pthread_mutex_t *data_access_mutex) {
   return set_single(0x06 /* function */, 
                     slave, reg_addr, value, fd, send_retries,
                     error_code, response_timeout, data_access_mutex);

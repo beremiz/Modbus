@@ -53,16 +53,16 @@
 /* FUNCTION 0x01   - Read Coils
  * Bits are stored on an int array, one bit per int.
  */
-inline int read_output_bits(u8  slave,
-                            u16 start_addr,
-                            u16 count,
-                            u16 *dest,
-                            int dest_size,
-                            int fd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex);
+int read_output_bits(u8  slave,
+                     u16 start_addr,
+                     u16 count,
+                     u16 *dest,
+                     int dest_size,
+                     int fd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex);
 #define read_coils(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
         read_output_bits(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
 
@@ -71,14 +71,14 @@ inline int read_output_bits(u8  slave,
  * Bits are stored on an u32 array, 32 bits per u32.
  * Unused bits in last u32 are set to 0.
  */
-inline int read_output_bits_u32(u8  slave,
-                                u16 start_addr,
-                                u16 count,
-                                u32 *dest,
-                                int fd,
-                                int send_retries,
-                                u8  *error_code,
-                                const struct timespec *response_timeout);
+int read_output_bits_u32(u8  slave,
+                         u16 start_addr,
+                         u16 count,
+                         u32 *dest,
+                         int fd,
+                         int send_retries,
+                         u8  *error_code,
+                         const struct timespec *response_timeout);
 #define read_coils_u32(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_output_bits_u32(p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -88,16 +88,16 @@ inline int read_output_bits_u32(u8  slave,
 /* FUNCTION 0x02   - Read Discrete Inputs
  * Bits are stored on an int array, one bit per int.
  */
-inline int read_input_bits(u8  slave,
-                           u16 start_addr,
-                           u16 count,
-                           u16 *dest,
-                           int dest_size,
-                           int fd,
-                           int send_retries,
-                           u8  *error_code,
-                           const struct timespec *response_timeout,
-                           pthread_mutex_t *data_access_mutex);
+int read_input_bits(u8  slave,
+                    u16 start_addr,
+                    u16 count,
+                    u16 *dest,
+                    int dest_size,
+                    int fd,
+                    int send_retries,
+                    u8  *error_code,
+                    const struct timespec *response_timeout,
+                    pthread_mutex_t *data_access_mutex);
 #define read_discrete_inputs(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
         read_input_bits     (p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
 
@@ -106,14 +106,14 @@ inline int read_input_bits(u8  slave,
  * Bits are stored on an u32 array, 32 bits per u32.
  * Unused bits in last u32 are set to 0.
  */
-inline int read_input_bits_u32(u8  slave,
-                               u16 start_addr,
-                               u16 count,
-                               u32 *dest,
-                               int fd,
-                               int send_retries,
-                               u8  *error_code,
-                               const struct timespec *response_timeout);
+int read_input_bits_u32(u8  slave,
+                        u16 start_addr,
+                        u16 count,
+                        u32 *dest,
+                        int fd,
+                        int send_retries,
+                        u8  *error_code,
+                        const struct timespec *response_timeout);
 #define read_discrete_inputs_u32(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_input_bits_u32     (p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -121,16 +121,16 @@ inline int read_input_bits_u32(u8  slave,
         
 
 /* FUNCTION 0x03   - Read Holding Registers */
-inline int read_output_words(u8  slave,
-                             u16 start_addr,
-                             u16 count,
-                             u16 *dest,
-                             int dest_size,
-                             int fd,
-                             int send_retries,
-                             u8  *error_code,
-                             const struct timespec *response_timeout,
-                             pthread_mutex_t *data_access_mutex);
+int read_output_words(u8  slave,
+                      u16 start_addr,
+                      u16 count,
+                      u16 *dest,
+                      int dest_size,
+                      int fd,
+                      int send_retries,
+                      u8  *error_code,
+                      const struct timespec *response_timeout,
+                      pthread_mutex_t *data_access_mutex);
 #define read_holding_registers(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
         read_output_words     (p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
 
@@ -139,14 +139,14 @@ inline int read_output_words(u8  slave,
  * u16 registers are stored in array of u32, two registers per u32.
  * Unused bits of last u32 element are set to 0.
  */
-inline int read_output_words_u32(u8  slave,
-                                 u16 start_addr,
-                                 u16 count,
-                                 u32 *dest,
-                                 int fd,
-                                 int send_retries,
-                                 u8  *error_code,
-                                 const struct timespec *response_timeout);
+int read_output_words_u32(u8  slave,
+                          u16 start_addr,
+                          u16 count,
+                          u32 *dest,
+                          int fd,
+                          int send_retries,
+                          u8  *error_code,
+                          const struct timespec *response_timeout);
 #define read_holding_registers_u32(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_output_words_u32     (p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -154,30 +154,30 @@ inline int read_output_words_u32(u8  slave,
 /* FUNCTION 0x03   - Read Holding Registers
  * return the array with the data to the calling function
  */
-inline int read_output_words_u16_ref(u8  slave,
-                                     u16 start_addr,
-                                     u16 count,
-                                     u16 **dest,
-                                     int ttyfd,
-                                     int send_retries,
-                                     u8  *error_code,
-                                     const struct timespec *response_timeout);
+int read_output_words_u16_ref(u8  slave,
+                              u16 start_addr,
+                              u16 count,
+                              u16 **dest,
+                              int ttyfd,
+                              int send_retries,
+                              u8  *error_code,
+                              const struct timespec *response_timeout);
 #define read_holding_registers_u16_ref(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_output_words_u16_ref     (p1,p2,p3,p4,p5,p6,p7,p8)
 
 
 
 /* FUNCTION 0x04   - Read Input Registers */
-inline int read_input_words(u8  slave,
-                            u16 start_addr,
-                            u16 count,
-                            u16 *dest,
-                            int dest_size,
-                            int fd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex);
+int read_input_words(u8  slave,
+                     u16 start_addr,
+                     u16 count,
+                     u16 *dest,
+                     int dest_size,
+                     int fd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex);
 #define read_input_registers(p1,p2,p3,p4,p5,p6,p7,p8,p9,p10) \
         read_input_words    (p1,p2,p3,p4,p5,p6,p7,p8,p9,p10)
 
@@ -187,14 +187,14 @@ inline int read_input_words(u8  slave,
  * u16 registers are stored in array of u32, two registers per u32.
  * Unused bits of last u32 element are set to 0.
  */
-inline int read_input_words_u32(u8  slave,
-                                u16 start_addr,
-                                u16 count,
-                                u32 *dest,
-                                int fd,
-                                int send_retries,
-                                u8  *error_code,
-                                const struct timespec *response_timeout);
+int read_input_words_u32(u8  slave,
+                         u16 start_addr,
+                         u16 count,
+                         u32 *dest,
+                         int fd,
+                         int send_retries,
+                         u8  *error_code,
+                         const struct timespec *response_timeout);
 #define read_input_registers_u32(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_input_words_u32    (p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -203,14 +203,14 @@ inline int read_input_words_u32(u8  slave,
 /* FUNCTION 0x04   - Read Input Registers
  * return the array with the data to the calling function
  */
-inline int read_input_words_u16_ref(u8  slave,
-                                    u16 start_addr,
-                                    u16 count,
-                                    u16 **dest,
-                                    int ttyfd,
-                                    int send_retries,
-                                    u8  *error_code,
-                                    const struct timespec *response_timeout);
+int read_input_words_u16_ref(u8  slave,
+                             u16 start_addr,
+                             u16 count,
+                             u16 **dest,
+                             int ttyfd,
+                             int send_retries,
+                             u8  *error_code,
+                             const struct timespec *response_timeout);
 #define read_input_registers_u16_ref(p1,p2,p3,p4,p5,p6,p7,p8) \
         read_input_words_u16_ref    (p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -218,14 +218,14 @@ inline int read_input_words_u16_ref(u8  slave,
 
 
 /* FUNCTION 0x05   - Force Single Coil */
-inline int write_output_bit(u8  slave,
-                            u16 coil_addr,
-                            u16 state,
-                            int fd,
-                            int send_retries,
-                            u8  *error_code,
-                            const struct timespec *response_timeout,
-                            pthread_mutex_t *data_access_mutex);
+int write_output_bit(u8  slave,
+                     u16 coil_addr,
+                     u16 state,
+                     int fd,
+                     int send_retries,
+                     u8  *error_code,
+                     const struct timespec *response_timeout,
+                     pthread_mutex_t *data_access_mutex);
 #define force_single_coil(p1,p2,p3,p4,p5,p6,p7,p8) \
         write_output_bit (p1,p2,p3,p4,p5,p6,p7,p8)
 
@@ -235,14 +235,14 @@ inline int write_output_bit(u8  slave,
 
 
 /* FUNCTION 0x06   - Write Single Register */
-inline int write_output_word(u8  slave,
-                             u16 reg_addr,
-                             u16 value,
-                             int fd,
-                             int send_retries,
-                             u8  *error_code,
-                             const struct timespec *response_timeout,
-                             pthread_mutex_t *data_access_mutex);
+int write_output_word(u8  slave,
+                      u16 reg_addr,
+                      u16 value,
+                      int fd,
+                      int send_retries,
+                      u8  *error_code,
+                      const struct timespec *response_timeout,
+                      pthread_mutex_t *data_access_mutex);
 #define write_single_register(p1,p2,p3,p4,p5,p6,p7,p8) \
         write_output_word    (p1,p2,p3,p4,p5,p6,p7,p8)
 
