@@ -153,6 +153,10 @@ int sin_bindsock(const char *host, const char *service, const char *protocol) {
   if ((type = gettypebyname(protocol)) == SOCK_PACKET)       return -1;
   /* create the socket */
   if ((s = socket(PF_INET, type, 0)) < 0)                   {perror("socket()");  return -1;}   
+  if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+      perror("setsockopt(SO_REUSEADDR) failed");
+      return -1;
+  }
   /* bind the socket */
   if (bind(s, (struct sockaddr *)&sin, sizeof (sin)) < 0)   {perror("bind()");    return -1;}
   
