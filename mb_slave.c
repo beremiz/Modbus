@@ -312,8 +312,10 @@ static int handle_read_bits (u8 *query_packet,
      *   requiring the user to use addressing starting off at 0! 
      */
   /* start_addr = mb_ntoh(u16_v(query_packet[2])) + 1; */
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
 
   #ifdef DEBUG
   printf("handle_read_input_bits() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -376,8 +378,10 @@ static int handle_read_words (u8 *query_packet,
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  mb_ntoh_safe(u16_v(query_packet[4]), &count);
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+//  mb_ntoh_safe(u16_v(query_packet[4]), &count);
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
 
   #ifdef DEBUG
   printf("handle_read_output_words() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -432,7 +436,8 @@ int handle_write_output_bit  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
 
   #ifdef DEBUG
   printf("handle_write_output_bit() called. slave=%d, function=%d, start_addr=%d\n", 
@@ -477,8 +482,9 @@ int handle_write_output_word (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+ 
   #ifdef DEBUG
   printf("handle_write_output_word() called. slave=%d, function=%d, start_addr=%d\n", 
          query_packet[0], query_packet[1], start_addr);
@@ -520,8 +526,10 @@ int handle_write_output_bits (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
 
   #ifdef DEBUG
   printf("handle_write_output_bits() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -566,9 +574,11 @@ int handle_write_output_words(u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
-  
+//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
+//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
+  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
+
   if ((count > MAX_WRITE_REGS) || (count < 1) || (count*2 != query_packet[6]) )
     {*error_code = ERR_ILLEGAL_DATA_VALUE; return -1;}
   
