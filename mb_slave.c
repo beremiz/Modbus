@@ -164,25 +164,34 @@ static inline u16 next_transaction_id(void) {
 /* u16 conversion functions to use on little endian platforms */
 /**************************************************************/
 
-static inline u16 mb_hton(u16 w) {
-  register u16 tmp;
-  tmp =  (w & 0x00FF);
-  tmp = ((w & 0xFF00) >> 0x08) | (tmp << 0x08);
-  return(tmp);
+/* NOTE: The input parameter must be the address 
+ *          of an u16 passed as a pointer to u8
+ * 
+ *       We use u8 *ptr as input parameter and read both (ptr+0) and (ptr+1)
+ *       instead of using u16 *ptr because we sometimes receive data in packtes
+ *       that are not aligned on even addresses, so some compilers recognize that
+ *       the given odd address cannot be used as a pointer to u16 and therefore 
+ *       adjust the pointer by (+1) or (-1), basicaly breacking our code!
+ *       So, we revert to u8 pointers... for u16 values.
+ */
+static inline void mb_hton(u8 *u16_from_ptr, u8 *u16_to_ptr) {
+  u16_to_ptr[0] =  u16_from_ptr[1];
+  u16_to_ptr[1] =  u16_from_ptr[0];
 }
-#define mb_ntoh(a) mb_hton(a)
+#define mb_ntoh(a, b) mb_hton(a, b)
 
-static inline void mb_hton_count(u16 *w, int count) {
-  int i;
-  for (i = 0; i < count; i++) {
+
+static inline void mb_hton_count(u8 *u16_ptr, unsigned count) {
+  unsigned i;
+  for (i = 0; i < count*2; i += 2) {
     /* swap the bytes around... 
      *  a = a ^ b;
      *  b = a ^ b;
      *  a = a ^ b;
      */
-    ((u8 *)(w+i))[0] ^= ((u8 *)(w+i))[1]; 
-    ((u8 *)(w+i))[1] ^= ((u8 *)(w+i))[0]; 
-    ((u8 *)(w+i))[0] ^= ((u8 *)(w+i))[1]; 
+    (u16_ptr+i)[0] ^= (u16_ptr+i)[1]; 
+    (u16_ptr+i)[1] ^= (u16_ptr+i)[0]; 
+    (u16_ptr+i)[0] ^= (u16_ptr+i)[1]; 
   }
 }
 #define mb_ntoh_count(w, count) mb_hton_count(w, count)
@@ -195,68 +204,72 @@ static inline void mb_hton_count(u16 *w, int count) {
 /* u16 conversion functions to use on big endian platforms */
 /***********************************************************/
 
- /* We do not need to swap the bytes around!  */
-#define mb_ntoh(val) (val)
-#define mb_hton(val) (val)
+/* We don't need to swap the bytes around! */
+static inline void mb_hton(u8 *u16_from_ptr, u8 *u16_to_ptr) {
+  u16_to_ptr[0] =  u16_from_ptr[0];
+  u16_to_ptr[1] =  u16_from_ptr[1];
+}
+#define mb_ntoh(a, b) mb_hton(a, b)
+
 #define mb_hton_count(w, count) /* empty ! */
 #define mb_ntoh_count(w, count) /* empty ! */
 
 
 #  else
-
 /********************************************************/
 /* u16 conversion functions to use on generic platforms */
 /********************************************************/
 
- /* We don't know the byte order, so we revert to the 
-  * standard htons() and ntohs() ... 
-  */
-static inline u16 mb_hton(u16 h_value) 
-  {return htons(h_value); /* return h_value; */}
 
-static inline u16 mb_ntoh(u16 m_value) 
-  {return ntohs(m_value); /* return m_value; */}
+/* We can't determine endiannes at compile time, so we do it at runtime.
+ * With any luck the compiler will be able to determine the result of the
+ * comparison at compile time and end up discarding the non-used code
+ * and the 'if' itself from the final executable.
+ */
 
-static inline void mb_hton_count(u16 *w, int count)
-  {int i; for (i = 0; i < count; i++) {w[i] = mb_hton(w[i]);}}
+static union {u16 u16;
+              u8  u8[2];} endian_ = 0x0102;
 
-static inline void mb_ntoh_count(u16 *w, int count)
-  {int i; for (i = 0; i < count; i++) {w[i] = mb_ntoh(w[i]);}}
+
+static inline void mb_hton(u8 *u16_from_ptr, u8 *u16_to_ptr) {
+  if (endian_.u8[0] == 0x01) {
+    /* machine is big endian -> no swapping */    
+    u16_to_ptr[0] =  u16_from_ptr[0];
+    u16_to_ptr[1] =  u16_from_ptr[1];
+  } else {
+    /* machine is little endian -> we swap bytes around */    
+    u16_to_ptr[0] =  u16_from_ptr[1];
+    u16_to_ptr[1] =  u16_from_ptr[0];
+  }
+}
+#define mb_ntoh(a, b) mb_hton(a, b)
+
+
+static inline void mb_hton_count(u8 *u16_ptr, unsigned count) {
+  unsigned i;
+  
+  if (endian_.u8[0] == 0x01)
+      /* machine is big endian. Nothing to do */
+      return;
+  
+  /* machine is little endian -> we swap bytes around */    
+  for (i = 0; i < count*2; i += 2) {
+    /* swap the bytes around... 
+     *  a = a ^ b;
+     *  b = a ^ b;
+     *  a = a ^ b;
+     */
+    (u16_ptr+i)[0] ^= (u16_ptr+i)[1]; 
+    (u16_ptr+i)[1] ^= (u16_ptr+i)[0]; 
+    (u16_ptr+i)[0] ^= (u16_ptr+i)[1]; 
+  }
+}
+#define mb_ntoh_count(w, count) mb_hton_count(w, count)
 
 #  endif
 # endif
 #endif /* __BYTE_ORDER */
 
-
-
-
-/* Safe versions of the conversion functions!
- *
- * Note that these functions always work, whatever the endiannes
- * of the machine that executes it!
- *
- * It is also safe because the resulting value may be stored
- * on an odd address even on machines that do not allow directly
- * accessing u16 bit words on odd addresses.
- */
-static inline int mb_hton_safe(u16 from, u16 *to_ptr) {
-  ((u8 *)to_ptr)[1] =  (from & 0x00FF);
-  ((u8 *)to_ptr)[0] = ((from & 0xFF00) >> 0x08);
-  return 0;
-}
-
-#define mb_ntoh_safe(a, b) mb_hton_safe(a, b)
-
-
-/*  return Most Significant Byte of value; */
-static inline u8 msb(u16 value) 
-  {return (value >> 8) & 0xFF;}
-
-/*  return Least Significant Byte of value; */
-static inline u8 lsb(u16 value) 
-  {return value & 0xFF;}
-
-#define u16_v(char_ptr)  (*((u16 *)(&(char_ptr))))
 
 
 
@@ -311,11 +324,8 @@ static int handle_read_bits (u8 *query_packet,
      *  I decided to go with the other option of using an u16, and 
      *   requiring the user to use addressing starting off at 0! 
      */
-  /* start_addr = mb_ntoh(u16_v(query_packet[2])) + 1; */
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
-  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
+  mb_ntoh(&(query_packet[4]), (u8 *)&count); 
 
   #ifdef DEBUG
   printf("handle_read_input_bits() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -378,10 +388,8 @@ static int handle_read_words (u8 *query_packet,
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-//  mb_ntoh_safe(u16_v(query_packet[4]), &count);
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
-  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
+  mb_ntoh(&(query_packet[4]), (u8 *)&count);
 
   #ifdef DEBUG
   printf("handle_read_output_words() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -405,7 +413,7 @@ static int handle_read_words (u8 *query_packet,
   if (res  <  0) {*error_code = ERR_SLAVE_DEVICE_FAILURE; return -1;}
   
   /* convert all data from host to network byte order. */
-  mb_hton_count((u16 *)&(resp_packet[3]), count);
+  mb_hton_count(&(resp_packet[3]), count);
   
   return resp_packet[2] + 3; /* packet size is data length + 3 bytes -> slave, function, count */
 }
@@ -436,8 +444,7 @@ int handle_write_output_bit  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
 
   #ifdef DEBUG
   printf("handle_write_output_bit() called. slave=%d, function=%d, start_addr=%d\n", 
@@ -482,9 +489,8 @@ int handle_write_output_word (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
- 
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
+  
   #ifdef DEBUG
   printf("handle_write_output_word() called. slave=%d, function=%d, start_addr=%d\n", 
          query_packet[0], query_packet[1], start_addr);
@@ -502,7 +508,7 @@ int handle_write_output_word (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet[5] = query_packet[5]; /* value - lo byte */
   
   /* convert data from network to host byte order */
-  mb_ntoh_count((u16 *)&(query_packet[4]), 1);
+  mb_ntoh_count(&(query_packet[4]), 1);
   
   res = (callbacks->write_outwords)(callbacks->arg, start_addr, 1, (u16 *)&(query_packet[4]));
   if (res == -2) {*error_code = ERR_ILLEGAL_DATA_ADDRESS; return -1;}
@@ -526,10 +532,8 @@ int handle_write_output_bits (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
-  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
+  mb_ntoh(&(query_packet[4]), (u8 *)&count); 
 
   #ifdef DEBUG
   printf("handle_write_output_bits() called. slave=%d, function=%d, start_addr=%d, count=%d\n", 
@@ -574,11 +578,9 @@ int handle_write_output_words(u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet = *resp_packet_ptr;
   
   /* See equivalent comment in handle_read_bits() */ 
-//  mb_ntoh_safe(u16_v(query_packet[2]), &start_addr);
-//  mb_ntoh_safe(u16_v(query_packet[4]), &count); 
-  start_addr = query_packet[2] * 256 + query_packet[3]; /* Temporary pointer alignment fix */
-  count = query_packet[4] * 256 + query_packet[5];      /* Temporary pointer alignment fix */
-
+  mb_ntoh(&(query_packet[2]), (u8 *)&start_addr);
+  mb_ntoh(&(query_packet[4]), (u8 *)&count); 
+  
   if ((count > MAX_WRITE_REGS) || (count < 1) || (count*2 != query_packet[6]) )
     {*error_code = ERR_ILLEGAL_DATA_VALUE; return -1;}
   
@@ -595,7 +597,7 @@ int handle_write_output_words(u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
   resp_packet[5] = query_packet[5]; /* count - lo byte */
   
   /* convert all data from network to host byte order */
-  mb_ntoh_count((u16 *)&(query_packet[7]), count);
+  mb_ntoh_count(&(query_packet[7]), count);
   
   res = (callbacks->write_outwords)(callbacks->arg, start_addr, count, (u16 *)&(query_packet[7]));
   if (res == -2) {*error_code = ERR_ILLEGAL_DATA_ADDRESS; return -1;}
