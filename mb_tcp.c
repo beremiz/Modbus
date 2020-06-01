@@ -1517,8 +1517,8 @@ int modbus_tcp_connect(node_addr_t node_addr) {
 
   /* Check the parameters we were passed... */
   if(sin_initaddr(&tmp_addr,
-                  node_addr.addr.tcp.host,    1, // 1 => allow host NULL, "" or "*" -> INADDR_ANY
-                  node_addr.addr.tcp.service, 1, // 1 => allow serivce NULL or ""   -> port = 0
+                  node_addr.addr.tcp.host,    0,
+                  node_addr.addr.tcp.service, 0,
                   DEF_PROTOCOL)
        < 0) {
 #ifdef ERRMSG
