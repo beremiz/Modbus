@@ -107,6 +107,58 @@ static inline u16 next_transaction_id(void) {
 }
 
 
+/* Determine endianess of platform... */
+
+/* WARNING: The following files are being included:
+ *              <stdib.h>  -->  <endian.h>  -->  <bits/endian.h>
+ * 
+ *          endian.h defines the following constants as:
+ *            #define __LITTLE_ENDIAN  and LITTLE_ENDIAN  as 1234
+ *            #define    __BIG_ENDIAN  and    BIG_ENDIAN  as 4321
+ *            #define    __PDP_ENDIAN  and    PDP_ENDIAN  as 3412
+ * 
+ *          bits/endian.h defines the constant BYTE_ORDER as:
+ *              #define __BYTE_ORDER as __LITTLE_ENDIAN
+ * 
+ *          endian.h then sets the following constants
+ *          (if __USE_BSD is set, which seems to be true):
+ *            # define LITTLE_ENDIAN    __LITTLE_ENDIAN
+ *            # define BIG_ENDIAN       __BIG_ENDIAN
+ *            # define PDP_ENDIAN       __PDP_ENDIAN
+ *            # define BYTE_ORDER       __BYTE_ORDER
+ */ 
+
+/* If we still don't know byte order, try to get it from <endian.h> */
+#ifndef __BYTE_ORDER
+#include <endian.h>
+#endif
+
+
+/* If we still don't know byte order => if using gcc, use it to determine byte order... */
+#ifndef __BYTE_ORDER
+#if defined(__GNUC__) 
+  /* We have GCC, which should define __LITTLE_ENDIAN__ */ 
+#  if defined(__LITTLE_ENDIAN__)
+#    define __BYTE_ORDER __LITTLE_ENDIAN
+#  else
+#    define __BYTE_ORDER __BIG_ENDIAN
+#  endif
+#endif /* __GNUC__ */ 
+#endif /* __BYTE_ORDER */
+
+
+#ifndef __BYTE_ORDER
+#  error   "Unable to determine platform's byte order. Aborting compilation."
+#elif   __BYTE_ORDER == __BIG_ENDIAN
+#  warning "Compiling for BIG endian platform."
+#elif   __BYTE_ORDER == __LITTLE_ENDIAN
+#  warning "Compiling for LITTLE endian platform."
+#else
+#  error   "Aborting compilation due to unsuported byte order (neither BIG not LITTLE endian)."
+#endif
+
+
+
 /*
  * Functions to convert u16 variables
  * between network and host byte order
@@ -121,40 +173,6 @@ static inline u16 next_transaction_id(void) {
  *       case in our code, so we have to define our own
  *       conversion functions...
  */
-
-/* if using gcc, use it to determine byte order... */
-#ifndef __BYTE_ORDER
-#if defined(__GNUC__) 
-  /* We have GCC, which should define __LITTLE_ENDIAN__ */ 
-#  if defined(__LITTLE_ENDIAN__)
-#    define __BYTE_ORDER __LITTLE_ENDIAN
-#  else
-#    define __BYTE_ORDER __BIG_ENDIAN
-#  endif
-#endif /* __GNUC__ */ 
-#endif /* __BYTE_ORDER */
-
-
-/* If we still don't know byte order, try to get it from <sys/param.h> */
-#ifndef __BYTE_ORDER
-#include <sys/param.h>
-#endif
-
-
-#ifndef __BYTE_ORDER
-#  ifdef BYTE_ORDER
-#   if BYTE_ORDER == LITTLE_ENDIAN
-#    define __BYTE_ORDER __LITTLE_ENDIAN
-#   else
-#    if BYTE_ORDER == BIG_ENDIAN
-#      define __BYTE_ORDER __BIG_ENDIAN
-#    endif
-#   endif
-#  endif /* BYTE_ORDER */
-#endif /* __BYTE_ORDER */
-
-
-
 
 
 #ifdef __BYTE_ORDER
