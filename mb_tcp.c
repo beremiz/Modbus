@@ -467,6 +467,18 @@ static int configure_socket(int socket_id) {
   }
 
   /* configure the socket */
+  {
+   int optval;
+   socklen_t optlen = sizeof(optval);
+   optval = 1;
+   if(setsockopt(socket_id, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) < 0) {
+#ifdef ERRMSG
+    perror("setsockopt()");
+    fprintf(stderr, ERRMSG_HEAD "Error configuring socket 'KeepAlive' option.\n");
+#endif
+      return -1;
+   }
+  }
     /* set the TCP no delay flag. */
   {int bool_opt = 1;
   if (setsockopt(socket_id, SOL_TCP, TCP_NODELAY,
