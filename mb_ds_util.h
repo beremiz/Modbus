@@ -122,9 +122,12 @@ static inline void lb_done(lb_buf_t *buf) {
 }
 
 static inline u8 *lb_normalize(lb_buf_t *buf) {
-  return (u8 *)memmove(buf->data,
-                       buf->data + buf->data_start,
-                       buf->data_end - buf->data_start);
+  u8 *ptr = (u8 *)memmove(buf->data,
+                          buf->data + buf->data_start,
+                          buf->data_end - buf->data_start);
+  buf->data_end -= buf->data_start;
+  buf->data_start = 0;
+  return ptr;
 }
 
 static inline u8 *lb_data(lb_buf_t *buf) {
