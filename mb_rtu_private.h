@@ -49,7 +49,7 @@
   * due to the algorithm used to work around aborted frames.
   */
 #define RECV_BUFFER_SIZE_SMALL  (MAX_RTU_FRAME_LENGTH + 10)
-#define RECV_BUFFER_SIZE_LARGE  (2 * MAX_RTU_FRAME_LENGTH)
+#define RECV_BUFFER_SIZE_LARGE  (2 * (MAX_RTU_FRAME_LENGTH))
 
 
 /* Frame lengths... */

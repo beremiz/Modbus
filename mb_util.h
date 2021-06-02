@@ -86,7 +86,7 @@
 #define TCP_HEADER_LENGTH       6
 
  /* Global Frame sizes */
-#define MAX_RTU_FRAME_LENGTH MAX_L2_FRAME_LENGTH + RTU_FRAME_CRC_LENGTH
+#define MAX_RTU_FRAME_LENGTH (MAX_L2_FRAME_LENGTH + RTU_FRAME_CRC_LENGTH)
 #define MAX_ASC_FRAME_LENGTH ((MAX_L2_FRAME_LENGTH * L2_TO_ASC_CODING) +             \
                               ASC_FRAME_HEADER_LENGTH + ASC_FRAME_TAIL_LENGTH +      \
                               ASC_FRAME_LRC_LENGTH)
