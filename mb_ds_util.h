@@ -152,10 +152,10 @@ static inline void lb_data_mark_for_purge(lb_buf_t *buf, int count) {
 static inline u8 *lb_data_purge(lb_buf_t *buf, int count) {
   buf->data_start += count + buf->marked_for_purge;
   buf->marked_for_purge = 0;
-  if (buf->data_start > buf->data_end)
-    buf->data_start = buf->data_end;
 
-  if ((buf->data_end == buf->data_size) || (buf->data_start >= buf->max_data_start))
+  if      (buf->data_start >= buf->data_end)
+    buf->data_start = buf->data_end = 0; // no bytes in buffer, might just as well normalize it
+  else if ((buf->data_end == buf->data_size) || (buf->data_start >= buf->max_data_start))
     return lb_normalize(buf);
 
   return buf->data + buf->data_start;
