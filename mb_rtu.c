@@ -1422,8 +1422,11 @@ static inline int return_frame(recv_buf_t *buf,
 #endif
     /* set the data pointer */
   *recv_data_ptr = lb_data(&(buf->data_buf));
-    /* remove the frame bytes off the buffer */
-  lb_data_purge(&(buf->data_buf), frame_length);
+    /* Mark the frame bytes to be deleted off the buffer by the next call to lb_data_purge() */
+	/* Notice that we cannot delete the frame bytes right away, as they will still be accessed by whoever
+	 * called read_frame(). We can only delete this data on the next call to read_frame() 
+	 */
+  lb_data_mark_for_purge(&(buf->data_buf), frame_length);
     /* reset the search_history flag */
   buf->frame_search_history = 0;
     /* if the buffer becomes empty, then reset boundary flag */
@@ -1530,6 +1533,16 @@ static inline int read_frame(nd_entry_t *nd_entry,
 
   /* assume error... */
   *recv_data_ptr = NULL;
+
+  /*===================================*
+   * Delete any previously received data that has already been returned as a valid frame in *
+   *===================================*/  
+   /* Delete any previously received data that has already been returned as a valid frame in 
+    * the previous invocation of read_frame().
+	* Notice that the data that will be deleted hass ben marked for deletion by calling
+	* lb_data_mark_for_purge() in return_frame()
+	*/
+  lb_data_purge(&(recv_buf->data_buf), 0);
 
   /*===================================*
    * Check for frame in left over data *

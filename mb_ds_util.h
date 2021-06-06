@@ -97,6 +97,7 @@ typedef struct {
         int data_start;     /* offset within *data were valid data starts */
         int data_end;       /* offset within *data were valid data ends   */
         int max_data_start; /* optimization parameter! When should it be normalised? */
+        int marked_for_purge; /* Number of bytes to be deleted in next call to lb_data_purge() */
         } lb_buf_t;
 
 /* NOTE: lb = Linear Buffer */
@@ -111,6 +112,7 @@ static inline u8 *lb_init(lb_buf_t *buf, int size, int max_data_start) {
   buf->data_size  = size;
   buf->data_start = 0;
   buf->data_end   = 0;
+  buf->marked_for_purge = 0;
   buf->max_data_start = max_data_start;
   buf->data = (u8 *)malloc(size);
   return buf->data;
@@ -143,8 +145,13 @@ static inline void lb_data_add(lb_buf_t *buf, int count) {
     buf->data_end = buf->data_size - 1;
 }
 
+static inline void lb_data_mark_for_purge(lb_buf_t *buf, int count) {
+  buf->marked_for_purge += count;
+}
+
 static inline u8 *lb_data_purge(lb_buf_t *buf, int count) {
-  buf->data_start += count;
+  buf->data_start += count + buf->marked_for_purge;
+  buf->marked_for_purge = 0;
   if (buf->data_start > buf->data_end)
     buf->data_start = buf->data_end;
 
@@ -156,6 +163,7 @@ static inline u8 *lb_data_purge(lb_buf_t *buf, int count) {
 
 static inline void lb_data_purge_all(lb_buf_t *buf) {
   buf->data_start = buf->data_end = 0;
+  buf->marked_for_purge = 0;
 }
 
 static inline u8 *lb_free(lb_buf_t *buf) {
