@@ -1997,7 +1997,7 @@ int modbus_rtu_init(int nd_count,
      * The number of extra bytes that must be allocated to the data buffer
      * before calling modbus_rtu_write()
      */
-  *extra_bytes = RTU_FRAME_CRC_LENGTH;
+  *extra_bytes = 0;
 
     /* initialise nd table... */
   if (nd_table_init(&nd_table_, nd_count) < 0)
