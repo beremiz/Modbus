@@ -38,6 +38,12 @@
 #define MAX_WRITE_REGS          123     /* Function 0x10 */
 
 
+/* Data type required for modbus_read(). 
+ * Has to be declared here as mb_layer1_prototypes.h is included several times!
+ */
+typedef enum {MB_req_frame, MB_resp_frame, MB_any_frame} mb_frame_type_t;
+
+
 /* Declare TCP layer1 functions */
 #define modbus_write             modbus_tcp_write           
 #define modbus_read              modbus_tcp_read            

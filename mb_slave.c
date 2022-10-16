@@ -784,6 +784,7 @@ int mb_slave_run(int fd, mb_slave_callback_t callback_functions, u8 slaveid) {
         byte_count = modbus_read(&nd,              /* node descriptor          */
                                  &query_packet,    /* u8 **recv_data_ptr,      */
                                  &transaction_id,  /* u16 *transaction_id,     */
+                                 MB_req_frame,     /* mb_frame_type_t          */
                                  NULL,             /* const u8 *send_data,     */
                                  0,                /* int send_length,         */
                                  NULL  /* wait indefenitely */ /* const struct timespec *recv_timeout); */

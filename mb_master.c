@@ -221,7 +221,7 @@ static int mb_transaction(u8  *query_packet,
        * response we are waiting for could be coming 'any minute now'.
        */
     do {
-      response_length = modbus_read(&ttyfd, response_packet, &recv_transaction_id,
+      response_length = modbus_read(&ttyfd, response_packet, &recv_transaction_id, MB_resp_frame,
                                     query_packet, query_length, response_timeout);
 
       /* TIMEOUT condition */
@@ -360,9 +360,9 @@ static int read_bits_u32(u8  function,
   response_packet += 3;
   /* handle groups of 4 bytes... */
   for(i = 0, dest_pos = 0; i + 3 < byte_count; i += 4, dest_pos++)
-    dest[dest_pos] = response_packet[i]           
-                   + response_packet[i+1]*0x100    
-                   + response_packet[i+2]*0x10000 
+    dest[dest_pos] = response_packet[i]
+                   + response_packet[i+1]*0x100
+                   + response_packet[i+2]*0x10000
                    + response_packet[i+3]*0x1000000;
   /* handle any remaining bytes... begining with the last! */
   if (i < byte_count) dest[dest_pos] = 0;

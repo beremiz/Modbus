@@ -1249,6 +1249,7 @@ static int modbus_tcp_read_frame(int nd,
 int modbus_tcp_read(int *nd,                /* node descriptor */
                     u8 **recv_data_ptr,
                     u16 *transaction_id,
+                    mb_frame_type_t requested_frame_type, /* ignored by this layer ! */
                     const u8 *send_data,   /* ignored ! */
                     int send_length,       /* ignored ! */
                     const struct timespec *recv_timeout) {

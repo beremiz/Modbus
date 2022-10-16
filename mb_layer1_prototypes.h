@@ -21,8 +21,6 @@
  */
 
 
-
-
  /* write a modbus frame */
  /* WARNING: when calling this function, the *frame_data buffer
   *          must be allocated with an extra *extra_bytes
@@ -73,6 +71,21 @@ int modbus_write(int    nd,
   *        converters, this functionality is essential as not all these converters
   *        are capable of not echoing back the sent data.
   *       These parameters are ignored when using TCP! 
+  * 
+  * requested_frame_type: one of -> MB_req_frame, MB_resp_frame, MB_any_frame
+  *                       the type of frame we should search for (request, response, or any)
+  *                       NOTE: only used by the RTu layer. Other layers simply ignore this parameter.
+  *                       NOTE: whatever the type of frame, searching for error frames is 
+  *                       always enabled (i.e. this function may always return that it found 
+  *                       an error frame, whatever frame type it was told to look for)
+  *                       NOTE: 
+  *                       This is needed because the RTU protocol may confuse some valid 
+  *                       response frames with valid query frames (e.g. the response to 
+  *                       read registers may contain data with values that just so happens 
+  *                       to match the correct CRC of the read registers query packet, making 
+  *                       it impossible to distinguish the beginning of a read registers 
+  *                       response to a read registers query). We only give this priority
+  *                       if it is possible to have this con
   */
  
  /* RETURNS: number of bytes read
@@ -82,6 +95,7 @@ int modbus_write(int    nd,
 int modbus_read(int *nd,                /* node descriptor */
                 u8 **recv_data_ptr,
                 u16 *transaction_id,
+                mb_frame_type_t requested_frame_type,
                 const u8 *send_data,
                 int send_length,      
                 const struct timespec *recv_timeout);

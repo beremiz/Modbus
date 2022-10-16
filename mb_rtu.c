@@ -1287,6 +1287,12 @@ static int frame_length(u8 *frame_data,
 
 /* Search for a valid frame in the current data.
  * If no valid frame is found, then we return -1.
+ * 
+ * requested_frame_type: one of -> MB_req_frame, MB_resp_frame, MB_any_frame (default)
+ *                       the type of frame we should search for (request, response, or any)
+ *                       NOTE: whatever the type of frame, searching for error frames is always enabled
+ *                       (i.e. this function may always return that it found an error frame, 
+ *                       whatever frame type it was told to look for)
  *
  * NOTE: Since frame verification is done by calculating the CRC, which is rather
  *       CPU intensive, and this function may be called several times with the same,
@@ -1295,6 +1301,7 @@ static int frame_length(u8 *frame_data,
  */
 static int search_for_frame(u8 *frame_data,
                             int frame_data_length,
+                            mb_frame_type_t requested_frame_type,  
                             int *search_history) {
   int query_length, resp_length;
   u8  function_code;
@@ -1302,6 +1309,17 @@ static int search_for_frame(u8 *frame_data,
 #define SFF_HIST_NO_QUERY_FRAME     0x01
 #define SFF_HIST_NO_RESPONSE_FRAME  0x02
 #define SFF_HIST_NO_FRAME  (SFF_HIST_NO_RESPONSE_FRAME + SFF_HIST_NO_QUERY_FRAME)
+
+  if (requested_frame_type == MB_req_frame)
+    /* only search for request frames   => don't search for response frames */
+    /* we simply mark the flag indicating not to search for response frames */
+    *search_history |= SFF_HIST_NO_RESPONSE_FRAME;
+  
+  if (requested_frame_type == MB_resp_frame)
+    /* only search for response frames  => don't search for request frames */
+    /* we simply mark the flag indicating not to search for request frames */
+    *search_history |= SFF_HIST_NO_QUERY_FRAME;
+    
 
   if ((*search_history == SFF_HIST_NO_FRAME) ||
       (frame_data_length < MIN_FRAME_LENGTH) ||
@@ -1438,6 +1456,12 @@ static inline int return_frame(recv_buf_t *buf,
 
 /* A function to read a valid frame off the rtu bus.
  *
+ * requested_frame_type: one of -> MB_req_frame, MB_resp_frame, MB_any_frame (default)
+ *                       the type of frame we should search for (request, response, or any)
+ *                       NOTE: whatever the type of frame, searching for error frames is always enabled
+ *                       (i.e. this function may always return that it found an error frame, 
+ *                       whatever frame type it was told to look for)
+ *
  * NOTES:
  *        - The returned frame is guaranteed to be a valid frame.
  *        - The returned length does *not* include the CRC.
@@ -1516,7 +1540,9 @@ static inline int return_frame(recv_buf_t *buf,
 static inline int read_frame(nd_entry_t *nd_entry,
                              u8 **recv_data_ptr,
                              struct timespec *end_time,
-                             u8 *slave_id)
+                             u8 *slave_id,
+                             mb_frame_type_t requested_frame_type  
+                            )
 {
   /* temporary variables... */
   fd_set rfds;
@@ -1553,6 +1579,7 @@ static inline int read_frame(nd_entry_t *nd_entry,
    */
   frame_length = search_for_frame(lb_data(&recv_buf->data_buf),
                                   lb_data_count(&recv_buf->data_buf),
+                                  requested_frame_type,
                                   &recv_buf->frame_search_history);
   if (frame_length > 0)
     /* We found a valid frame! */
@@ -1625,6 +1652,7 @@ static inline int read_frame(nd_entry_t *nd_entry,
      *-----------------------*/
     frame_length = search_for_frame(lb_data(&recv_buf->data_buf),
                                     lb_data_count(&recv_buf->data_buf),
+                                    requested_frame_type,
                                     &recv_buf->frame_search_history);
     if (frame_length > 0)
       /* We found a valid frame! */
@@ -1765,6 +1793,20 @@ static inline int read_frame(nd_entry_t *nd_entry,
  * ignore_echo == 0, then the first valid frame read off
  * the bus is returned.
  *
+ * requested_frame_type: one of -> MB_req_frame, MB_resp_frame, MB_any_frame (default)
+ *                       the type of frame we should search for (request, response, or any)
+ *                       NOTE: whatever the type of frame, searching for error frames is 
+ *                       always enabled (i.e. this function may always return that it found 
+ *                       an error frame, whatever frame type it was told to look for)
+ *                       NOTE: 
+ *                       This is needed because the RTU protocol may confuse some valid 
+ *                       response frames with valid query frames (e.g. the response to 
+ *                       read registers may contain data with values that just so happens 
+ *                       to match the correct CRC of the read registers query packet, making 
+ *                       it impossible to distinguish the beginning of a read registers 
+ *                       response to a read registers query). We only give this priority
+ *                       if it is possible to have this con
+ * 
  * return value: The length (in bytes) of the valid frame,
  *               -1 on error
  *               -2 on timeout
@@ -1773,6 +1815,7 @@ static inline int read_frame(nd_entry_t *nd_entry,
 int modbus_rtu_read(int *nd,
                     u8 **recv_data_ptr,
                     u16 *transaction_id,
+                    mb_frame_type_t requested_frame_type,
                     const u8 *send_data,
                     int send_length,
                     const struct timespec *recv_timeout) {
@@ -1785,6 +1828,10 @@ int modbus_rtu_read(int *nd,
   /* Check input parameters... */
   if (nd == NULL)
     return -1;
+
+#ifdef DEBUG
+  fprintf(stderr, "modbus_rtu_read(fd=%d) called...\n", *nd);
+#endif
 
   if (recv_data_ptr == NULL)
     recv_data_ptr = &local_recv_data_ptr;
@@ -1840,7 +1887,7 @@ int modbus_rtu_read(int *nd,
    */
 
   iter = 0;
-  while ((res = recv_length = read_frame(nd_entry, recv_data_ptr, ts_ptr, slave_id)) >= 0) {
+  while ((res = recv_length = read_frame(nd_entry, recv_data_ptr, ts_ptr, slave_id, requested_frame_type)) >= 0) {
     if (iter < INT_MAX) iter++;
 
     if ((send_length <= 0) || (nd_entry->ignore_echo == 0))
@@ -1853,7 +1900,8 @@ int modbus_rtu_read(int *nd,
       *
       * We must only do this for the first frame we read. Subsequent
       * frames are guaranteed not to be the previously sent frame
-      * since the modbus_rtu_write() resets the recv buffer.
+      * since the modbus_rtu_write() resets the recv buffer
+	  * (_before_ sending out the message so as to avoid race conditions).
       * Remember too that valid modbus responses may be exactly the same
       * as the request frame!!
       */

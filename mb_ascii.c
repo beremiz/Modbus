@@ -1452,6 +1452,7 @@ static inline int read_frame(nd_entry_t *nd_entry,
 int modbus_ascii_read(int *nd,
                       u8 **recv_data_ptr,
                       u16 *transaction_id,
+                      mb_frame_type_t requested_frame_type, /* ignored by this layer ! */
                       const u8 *send_data,
                       int send_length,
                       const struct timespec *recv_timeout) {
