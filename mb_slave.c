@@ -291,6 +291,7 @@ static inline void mb_hton_count(u8 *u16_ptr, unsigned count) {
 /* Handle functions 0x01 and 0x02 */
 typedef int (*read_bits_callback_t)(void *arg, u16 start_addr, u16 bit_count,  u8  *data_bytes);
 static int handle_read_bits (u8 *query_packet,
+                             int query_packet_len,
                              u8 **resp_packet_ptr,
                              u8 *error_code,
                              read_bits_callback_t read_bits_callback,
@@ -299,7 +300,11 @@ static int handle_read_bits (u8 *query_packet,
   u16 start_addr, count;
   int res;
   u8 *resp_packet;
-  
+
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len != 6)
+    return 0;
+
   /* If no callback, handle as if function is not supported... */
   if (read_bits_callback == NULL) 
     {*error_code = ERR_ILLEGAL_FUNCTION; return -1;}
@@ -357,12 +362,12 @@ static int handle_read_bits (u8 *query_packet,
 
 
 /* Handle function 0x01 */
-int handle_read_output_bits  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks)
-  {return handle_read_bits(query_packet, resp_packet_ptr, error_code, callbacks->read_outbits, callbacks->arg);}
+int handle_read_output_bits  (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks)
+  {return handle_read_bits(query_packet, query_packet_len, resp_packet_ptr, error_code, callbacks->read_outbits, callbacks->arg);}
 
 /* Handle function 0x02 */
-int handle_read_input_bits   (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks)
-  {return handle_read_bits(query_packet, resp_packet_ptr, error_code, callbacks->read_inbits, callbacks->arg);}
+int handle_read_input_bits   (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks)
+  {return handle_read_bits(query_packet, query_packet_len, resp_packet_ptr, error_code, callbacks->read_inbits, callbacks->arg);}
 
 
 
@@ -370,6 +375,7 @@ int handle_read_input_bits   (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
 /* Handle functions 0x03 and 0x04 */
 typedef int (*read_words_callback_t)(void *arg, u16 start_addr, u16 word_count, u16 *data_words);
 static int handle_read_words (u8 *query_packet, 
+                              int query_packet_len,
                               u8 **resp_packet_ptr, 
                               u8 *error_code, 
                               read_words_callback_t read_words_callback,
@@ -378,6 +384,10 @@ static int handle_read_words (u8 *query_packet,
   u16 start_addr, count;
   int res;
   u8 *resp_packet;
+  
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len != 6)
+    return 0;
 
   /* If no callback, handle as if function is not supported... */
   if (read_words_callback == NULL) 
@@ -422,21 +432,25 @@ static int handle_read_words (u8 *query_packet,
 
 
 /* Handle function 0x03 */
-int handle_read_output_words (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) 
-  {return handle_read_words(query_packet, resp_packet_ptr, error_code, callbacks->read_outwords, callbacks->arg);}
+int handle_read_output_words (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) 
+  {return handle_read_words(query_packet, query_packet_len, resp_packet_ptr, error_code, callbacks->read_outwords, callbacks->arg);}
 
 /* Handle function 0x04 */
-int handle_read_input_words  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) 
-  {return handle_read_words(query_packet, resp_packet_ptr, error_code, callbacks->read_inwords, callbacks->arg);}
+int handle_read_input_words  (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) 
+  {return handle_read_words(query_packet, query_packet_len, resp_packet_ptr, error_code, callbacks->read_inwords, callbacks->arg);}
 
 
 
 /* Handle function 0x05 */
-int handle_write_output_bit  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
+int handle_write_output_bit  (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
   u16 start_addr;
   int res;
   u8 *resp_packet;
   
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len != 6)
+    return 0;
+
   /* If no callback, handle as if function is not supported... */
   if (callbacks->write_outbits == NULL)
     {*error_code = ERR_ILLEGAL_FUNCTION; return -1;}
@@ -477,11 +491,15 @@ int handle_write_output_bit  (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
 
 
 /* Handle function 0x06 */
-int handle_write_output_word (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
+int handle_write_output_word (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
   u16 start_addr;
   int res;
   u8 *resp_packet;
   
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len != 6)
+    return 0;
+
   /* If no callback, handle as if function is not supported... */
   if (callbacks->write_outwords == NULL)
     {*error_code = ERR_ILLEGAL_FUNCTION; return -1;}
@@ -520,11 +538,15 @@ int handle_write_output_word (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
 
 
 /* Handle function 0x0F */
-int handle_write_output_bits (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
+int handle_write_output_bits (u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
   u16 start_addr, count;
   int res;
   u8 *resp_packet;
   
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len  < 7)                 return 0;
+  if (query_packet_len != 7+query_packet[6]) return 0;
+
   /* If no callback, handle as if function is not supported... */
   if (callbacks->write_outbits == NULL)
     {*error_code = ERR_ILLEGAL_FUNCTION; return -1;}
@@ -566,11 +588,15 @@ int handle_write_output_bits (u8 *query_packet, u8 **resp_packet_ptr, u8 *error_
 
 
 /* Handle function 0x10 */
-int handle_write_output_words(u8 *query_packet, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
+int handle_write_output_words(u8 *query_packet, int query_packet_len, u8 **resp_packet_ptr, u8 *error_code, mb_slave_callback_t *callbacks) {
   u16 start_addr, count;
   int res;
   u8 *resp_packet;
   
+  /* If request frame has incorrect length, ignore incorrect frame (i.e. do NOT return any response) */
+  if (query_packet_len  < 7)                 return 0;
+  if (query_packet_len != 7+query_packet[6]) return 0;
+
   /* If no callback, handle as if function is not supported... */
   if (callbacks->write_outwords == NULL)
     {*error_code = ERR_ILLEGAL_FUNCTION; return -1;}
@@ -815,14 +841,14 @@ int mb_slave_run(int fd, mb_slave_callback_t callback_functions, u8 slaveid) {
       resp_packet = resp_buffer_;
       
       switch(function) {
-        case 0x01: resp_length = handle_read_output_bits  (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x02: resp_length = handle_read_input_bits   (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x03: resp_length = handle_read_output_words (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x04: resp_length = handle_read_input_words  (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x05: resp_length = handle_write_output_bit  (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x06: resp_length = handle_write_output_word (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x0F: resp_length = handle_write_output_bits (query_packet, &resp_packet, &error_code, &callback_functions); break;
-        case 0x10: resp_length = handle_write_output_words(query_packet, &resp_packet, &error_code, &callback_functions); break;
+        case 0x01: resp_length = handle_read_output_bits  (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x02: resp_length = handle_read_input_bits   (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x03: resp_length = handle_read_output_words (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x04: resp_length = handle_read_input_words  (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x05: resp_length = handle_write_output_bit  (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x06: resp_length = handle_write_output_word (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x0F: resp_length = handle_write_output_bits (query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
+        case 0x10: resp_length = handle_write_output_words(query_packet, byte_count, &resp_packet, &error_code, &callback_functions); break;
         /* return exception code 0x01 -> function not supported! */
         default :  resp_length = -1; error_code = 0x01; break; 
       }; /* switch(function) */
@@ -836,7 +862,12 @@ int mb_slave_run(int fd, mb_slave_callback_t callback_functions, u8 slaveid) {
         resp_packet[2] = error_code; 	
         resp_length = 3;
       }
-      modbus_write(nd, resp_packet, resp_length, transaction_id, NULL /*transmit_timeout*/);
+      if (resp_length > 0) {
+        modbus_write(nd, resp_packet, resp_length, transaction_id, NULL /*transmit_timeout*/);
+      }
+      if (resp_length > 0) {
+        /* do nothing, silently! I.e., simply ignore invalid request frame, and do NOT send any response! */
+      }
     }; /* if not ignore request */
   }; /* while(1) */
   
