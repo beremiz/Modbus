@@ -183,9 +183,9 @@ static inline int build_packet(u8  slave,
  *          >2    -> SUCCESS: frame length
  *           0..2 -> will never be returned!
  */
-static int mb_transaction(u8  *packet,
+static int mb_transaction(u8  *query_packet,
                           int query_length,
-                          u8  **data,
+                          u8  **response_packet,
                           int fd,
                           int send_retries,
                           u8  *error_code,
@@ -212,7 +212,7 @@ static int mb_transaction(u8  *packet,
   for (send_retries++; send_retries > 0; send_retries--) {
     error = TIMEOUT;
 
-    if (modbus_write(ttyfd, packet, query_length, send_transaction_id, response_timeout) < 0)
+    if (modbus_write(ttyfd, query_packet, query_length, send_transaction_id, response_timeout) < 0)
       {error = PORT_FAILURE; continue;}
 
       /* if we receive a correct response but with a wrong transaction id or wrong modbus function, we try to 
@@ -221,8 +221,8 @@ static int mb_transaction(u8  *packet,
        * response we are waiting for could be coming 'any minute now'.
        */
     do {
-      response_length = modbus_read(&ttyfd, data, &recv_transaction_id,
-                                    packet, query_length, response_timeout);
+      response_length = modbus_read(&ttyfd, response_packet, &recv_transaction_id,
+                                    query_packet, query_length, response_timeout);
 
       /* TIMEOUT condition */
       /* However, if we had previously received an invalid frame, or some other error,
@@ -243,17 +243,17 @@ static int mb_transaction(u8  *packet,
              (send_transaction_id != recv_transaction_id)
              /* not a response frame to _our_ query */
             ||
-             (((*data)[1] & ~0x80) != packet[1])
-            /* NOTE: no need to check whether (*data)[0] = slave!              */
+             (((*response_packet)[1] & ~0x80) != query_packet[1])
+            /* NOTE: no need to check whether (*response_packet)[0] = slave!              */
             /*       This has already been done by the modbus_read() function! */
             );
 
     if(response_length < 0)  {error = PORT_FAILURE; continue;}
 
     /* Now check whether we received a Modbus Exception frame */
-    if (((*data)[1] & 0x80) != 0) {       /* we have an exception frame! */
-      /* NOTE: we have already checked above that data[2] exists! */
-      if (error_code != NULL)  *error_code = (*data)[2];
+    if (((*response_packet)[1] & 0x80) != 0) {       /* we have an exception frame! */
+      /* NOTE: we have already checked above that response_packet[2] exists! */
+      if (error_code != NULL)  *error_code = (*response_packet)[2];
       return MODBUS_ERROR;
     }
     /* success! Let's get out of the send retry loop... */
@@ -291,26 +291,26 @@ static int read_bits(u8  function,
                      const struct timespec *response_timeout,
                      pthread_mutex_t *data_access_mutex) {
   
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8 *data;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
   int response_length, query_length;
   int temp, i, bit, dest_pos = 0;
   int coils_processed = 0;
   
-  query_length = build_packet(slave, function, start_addr, count, packet);
+  query_length = build_packet(slave, function, start_addr, count, query_packet);
   if (query_length < 0)  return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd,
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd,
                                    send_retries, error_code, response_timeout);
   
   if (response_length  < 0)                  return response_length;
   /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
-  if (response_length != 3 + (count+7)/8)    return INVALID_FRAME;
-  if (data[2]         !=     (count+7)/8)    return INVALID_FRAME;
+  if (response_length    != 3 + (count+7)/8)    return INVALID_FRAME;
+  if (response_packet[2] !=     (count+7)/8)    return INVALID_FRAME;
   
   if (NULL != data_access_mutex) pthread_mutex_lock(data_access_mutex);
-  for( i = 0; (i < data[2]) && (i < dest_size); i++ ) {
-    temp = data[3 + i];
+  for( i = 0; (i < response_packet[2]) && (i < dest_size); i++ ) {
+    temp = response_packet[3 + i];
     for( bit = 0x01; (bit & 0xff) && (coils_processed < count); ) {
       dest[dest_pos] = (temp & bit)?1:0;
       coils_processed++;
@@ -340,31 +340,34 @@ static int read_bits_u32(u8  function,
                          int send_retries,
                          u8  *error_code,
                          const struct timespec *response_timeout) {
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8 *data;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
   int response_length, query_length;                         
   int byte_count, i, dest_pos = 0;
   
-  query_length = build_packet(slave, function, start_addr, count, packet);
+  query_length = build_packet(slave, function, start_addr, count, query_packet);
   if (query_length < 0)  return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd,
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd,
                                    send_retries, error_code, response_timeout);
   
   if (response_length < 0)                   return response_length;  
   /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
-  if (response_length != 3 + (count+7)/8)    return INVALID_FRAME;
-  if (data[2]         !=     (count+7)/8)    return INVALID_FRAME;
+  if (response_length    != 3 + (count+7)/8)    return INVALID_FRAME;
+  if (response_packet[2] !=     (count+7)/8)    return INVALID_FRAME;
   
-  byte_count = data[2];
-  data += 3;
+  byte_count = response_packet[2];
+  response_packet += 3;
   /* handle groups of 4 bytes... */
   for(i = 0, dest_pos = 0; i + 3 < byte_count; i += 4, dest_pos++)
-    dest[dest_pos] = data[i] + data[i+1]*0x100 + data[i+2]*0x10000 + data[i+3]*0x1000000;
+    dest[dest_pos] = response_packet[i]           
+                   + response_packet[i+1]*0x100    
+                   + response_packet[i+2]*0x10000 
+                   + response_packet[i+3]*0x1000000;
   /* handle any remaining bytes... begining with the last! */
   if (i < byte_count) dest[dest_pos] = 0;
   for(byte_count--; i <= byte_count; byte_count--)
-    dest[dest_pos] = dest[dest_pos]*0x100 + data[byte_count];
+    dest[dest_pos] = dest[dest_pos]*0x100 + response_packet[byte_count];
   
   return response_length;
 }
@@ -494,26 +497,26 @@ static int read_registers(u8  function,
                           u8  *error_code,
                           const struct timespec *response_timeout,
                           pthread_mutex_t *data_access_mutex) {
-  u8 *data;
-  u8 packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
+  u8 query_packet[QUERY_BUFFER_SIZE];
   int response_length;
   int query_length;
   int temp,i;
   
-  query_length = build_packet(slave, function, start_addr, count, packet);
+  query_length = build_packet(slave, function, start_addr, count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd, 
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd, 
                                    send_retries, error_code, response_timeout);
   
-  if (response_length  < 0)              return response_length;  
-  if (response_length != 3 + 2*count)    return INVALID_FRAME;  
-  if (data[2]         !=     2*count)    return INVALID_FRAME;
+  if (response_length     < 0)              return response_length;  
+  if (response_length    != 3 + 2*count)    return INVALID_FRAME;  
+  if (response_packet[2] !=     2*count)    return INVALID_FRAME;
   
   if (NULL != data_access_mutex) pthread_mutex_lock(data_access_mutex);
-  for(i = 0; (i < (data[2]*2)) && (i < dest_size); i++ ) {
-    temp = data[3 + i *2] << 8;    /* copy reg hi byte to temp hi byte*/
-    temp = temp | data[4 + i * 2]; /* copy reg lo byte to temp lo byte*/
+  for(i = 0; (i < (response_packet[2]*2)) && (i < dest_size); i++ ) {
+    temp  = response_packet[3 + i *2 ] << 8;  /* copy reg hi byte to temp hi byte*/
+    temp |= response_packet[4 + i * 2];       /* copy reg lo byte to temp lo byte*/
     dest[i] = temp;
   }
   if (NULL != data_access_mutex) pthread_mutex_unlock(data_access_mutex);
@@ -538,35 +541,35 @@ static int read_registers_u16_ref(u8  function,
                                   int send_retries,
                                   u8  *error_code,
                                   const struct timespec *response_timeout) {
-  u8 *data;
-  u8 packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
+  u8 query_packet[QUERY_BUFFER_SIZE];
   int response_length;
   int query_length;
   int i, byte_count;
   
-  query_length = build_packet(slave, function, start_addr, count, packet);
+  query_length = build_packet(slave, function, start_addr, count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd,
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd,
                                    send_retries, error_code, response_timeout);
   
-  if (response_length < 0)               return response_length;  
-  if (response_length != 3 + 2*count)    return INVALID_FRAME;  
-  if (data[2]         !=     2*count)    return INVALID_FRAME;
+  if (response_length     < 0)              return response_length;  
+  if (response_length    != 3 + 2*count)    return INVALID_FRAME;  
+  if (response_packet[2] !=     2*count)    return INVALID_FRAME;
   
-  byte_count = data[2];
-  data = data + 3; /* & data[3] */
+  byte_count      = response_packet[2];
+  response_packet = response_packet + 3; /* & response_packet[3] */
   
   if (ntohs(0x0102) != 0x0102) {
    /* little endian host... => we need to swap the bytes! */
     for(i = 0; i < byte_count; i++ ) {
       /* the following 3 lines result in the two values being exchanged! */ 
-      data[i  ] = data[i] ^ data[i+1];
-      data[i+1] = data[i] ^ data[i+1];
-      data[i  ] = data[i] ^ data[i+1];
+      response_packet[i  ] = response_packet[i] ^ response_packet[i+1];
+      response_packet[i+1] = response_packet[i] ^ response_packet[i+1];
+      response_packet[i  ] = response_packet[i] ^ response_packet[i+1];
     }
   }
-  *dest = (u16 *)data;  
+  *dest = (u16 *)response_packet;  
   return byte_count;
 }
 
@@ -588,61 +591,61 @@ static int read_registers_u32(u8  function,
                               int send_retries,
                               u8  *error_code,
                               const struct timespec *response_timeout) {
-  u8 *data;
-  u8 packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
+  u8 query_packet[QUERY_BUFFER_SIZE];
   int response_length;
   int query_length;
   int i, byte_count, dest_pos;
   
-  query_length = build_packet(slave, function, start_addr, count, packet);
+  query_length = build_packet(slave, function, start_addr, count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd,
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd,
                                    send_retries, error_code, response_timeout);
   
-  if (response_length  < 0)              return response_length;
-  if (response_length != 3 + 2*count)    return INVALID_FRAME;
-  if (data[2]         !=     2*count)    return INVALID_FRAME;
+  if (response_length     < 0)              return response_length;
+  if (response_length    != 3 + 2*count)    return INVALID_FRAME;
+  if (response_packet[2] !=     2*count)    return INVALID_FRAME;
   
-  byte_count = data[2];
-  data += 3;
+  byte_count = response_packet[2];
+  response_packet += 3;
   
   if (ntohs(0x0102) == 0x0102) {
    /* big endian host... */
     /* handle groups of 4 bytes... */
     for(i = 0, dest_pos = 0; i + 3 < byte_count; i += 4, dest_pos++) {
-      *(((u8 *)(dest + dest_pos))+ 0) = *(data+i+3);
-      *(((u8 *)(dest + dest_pos))+ 1) = *(data+i+4);
-      *(((u8 *)(dest + dest_pos))+ 2) = *(data+i+0);
-      *(((u8 *)(dest + dest_pos))+ 3) = *(data+i+1);
+      *(((u8 *)(dest + dest_pos))+ 0) = *(response_packet+i+3);
+      *(((u8 *)(dest + dest_pos))+ 1) = *(response_packet+i+4);
+      *(((u8 *)(dest + dest_pos))+ 2) = *(response_packet+i+0);
+      *(((u8 *)(dest + dest_pos))+ 3) = *(response_packet+i+1);
     }
     /* handle any remaining bytes...
      * since byte_count is supposed to be multiple of 2,
-     * (and has already been verified above 'if (data[2] != 2*count)')
+     * (and has already been verified above 'if (response_packet[2] != 2*count)')
      * this will be either 2, or none at all!
      */
     if (i + 1 < byte_count)
       *(((u8 *)(dest + dest_pos))+ 0) = 0;
       *(((u8 *)(dest + dest_pos))+ 1) = 0;
-      *(((u8 *)(dest + dest_pos))+ 2) = *(data+i+0);
-      *(((u8 *)(dest + dest_pos))+ 3) = *(data+i+1);
+      *(((u8 *)(dest + dest_pos))+ 2) = *(response_packet+i+0);
+      *(((u8 *)(dest + dest_pos))+ 3) = *(response_packet+i+1);
   } else {
    /* little endian host... */
     /* handle groups of 4 bytes... */
     for(i = 0, dest_pos = 0; i + 3 < byte_count; i += 4, dest_pos++) {
-      *(((u8 *)(dest + dest_pos))+ 0) = *(data+i+1);
-      *(((u8 *)(dest + dest_pos))+ 1) = *(data+i+0);
-      *(((u8 *)(dest + dest_pos))+ 2) = *(data+i+3);
-      *(((u8 *)(dest + dest_pos))+ 3) = *(data+i+2);
+      *(((u8 *)(dest + dest_pos))+ 0) = *(response_packet+i+1);
+      *(((u8 *)(dest + dest_pos))+ 1) = *(response_packet+i+0);
+      *(((u8 *)(dest + dest_pos))+ 2) = *(response_packet+i+3);
+      *(((u8 *)(dest + dest_pos))+ 3) = *(response_packet+i+2);
     }
     /* handle any remaining bytes...
      * since byte_count is supposed to be multiple of 2,
-     * (and has already been verified above 'if (data[2] != 2*count)')
+     * (and has already been verified above 'if (response_packet[2] != 2*count)')
      * this will be either 2, or none at all!
      */
     if (i + 1 < byte_count)
-      *(((u8 *)(dest + dest_pos))+ 0) = *(data+i+1);
-      *(((u8 *)(dest + dest_pos))+ 1) = *(data+i+0);
+      *(((u8 *)(dest + dest_pos))+ 0) = *(response_packet+i+1);
+      *(((u8 *)(dest + dest_pos))+ 1) = *(response_packet+i+0);
       *(((u8 *)(dest + dest_pos))+ 2) = 0;
       *(((u8 *)(dest + dest_pos))+ 3) = 0;
   }
@@ -824,23 +827,23 @@ static int set_single(u8  function,
                       u8  *error_code,
                       const struct timespec *response_timeout,
                       pthread_mutex_t *data_access_mutex) {
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8 *data;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8 *response_packet;
   int query_length, response_length;
   
   if (NULL != data_access_mutex) pthread_mutex_lock(data_access_mutex);
-  query_length = build_packet(slave, function, addr, value, packet);
+  query_length = build_packet(slave, function, addr, value, query_packet);
   if (NULL != data_access_mutex) pthread_mutex_unlock(data_access_mutex);
   if (query_length < 0)    return INTERNAL_ERROR;
   
-  response_length = mb_transaction(packet, query_length, &data, ttyfd, send_retries,
+  response_length = mb_transaction(query_packet, query_length, &response_packet, ttyfd, send_retries,
                                    error_code, response_timeout);
   
   if (response_length  < 0)  return response_length;  
   if (response_length != 6)  return INVALID_FRAME;
   
-  if ((data[2] != packet[2]) || (data[3] != packet[3]) ||
-      (data[4] != packet[4]) || (data[5] != packet[5]))
+  if ((response_packet[2] != query_packet[2]) || (response_packet[3] != query_packet[3]) ||
+      (response_packet[4] != query_packet[4]) || (response_packet[5] != query_packet[5]))
     return INVALID_FRAME;
   
   return response_length;
@@ -903,8 +906,8 @@ int write_output_bits(u8  slave,
   int coil_check = 0;
   int data_array_pos = 0;
   int query_length, response_length;
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8  *rdata;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8  *response_packet;
   
   if( coil_count > MAX_WRITE_COILS ) {
     coil_count = MAX_WRITE_COILS;
@@ -914,35 +917,35 @@ int write_output_bits(u8  slave,
   }
   
   query_length = build_packet(slave, 0x0F /* function */,
-                              start_addr, coil_count, packet);
+                              start_addr, coil_count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
   /* NOTE: Integer division. (count+7)/8 is equivalent to ceil(count/8) */
   byte_count = (coil_count+7)/8;
-  packet[query_length] = byte_count;
+  query_packet[query_length] = byte_count;
   
   if (NULL != data_access_mutex) pthread_mutex_lock(data_access_mutex);
   bit = 0x01;
   for(i = 0; i < byte_count; i++) {
-    packet[++query_length] = 0;
+    query_packet[++query_length] = 0;
     while((bit & 0xFF) && (coil_check++ < coil_count)) {
-      if(data[data_array_pos++]) {packet[query_length] |=  bit;}
-      else                       {packet[query_length] &= ~bit;}
+      if(data[data_array_pos++]) {query_packet[query_length] |=  bit;}
+      else                       {query_packet[query_length] &= ~bit;}
       bit <<= 1;
     }
     bit = 0x01;
   }
   if (NULL != data_access_mutex) pthread_mutex_unlock(data_access_mutex);
   
-  response_length = mb_transaction(packet, ++query_length, &rdata, ttyfd, send_retries,
+  response_length = mb_transaction(query_packet, ++query_length, &response_packet, ttyfd, send_retries,
                                    error_code, response_timeout);
   
   if (response_length  < 0)      return response_length;
   if (response_length != 6)      return INVALID_FRAME;
-  if ((rdata[2] != packet[2]) || 
-      (rdata[3] != packet[3]) ||
-      (rdata[4] != packet[4]) ||
-      (rdata[5] != packet[5]))   return INVALID_FRAME;
+  if ((response_packet[2] != query_packet[2]) || 
+      (response_packet[3] != query_packet[3]) ||
+      (response_packet[4] != query_packet[4]) ||
+      (response_packet[5] != query_packet[5]))   return INVALID_FRAME;
   
   return response_length;
 }
@@ -963,8 +966,8 @@ int write_output_bits_u32(u8  slave,
                           const struct timespec *response_timeout) {
   int org_pos, byte_count, i;
   int query_length, response_length;
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8  *rdata;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8  *response_packet;
   
   if( coil_count > MAX_WRITE_COILS ) {
     coil_count = MAX_WRITE_COILS;
@@ -974,35 +977,35 @@ int write_output_bits_u32(u8  slave,
   }
   
   query_length = build_packet(slave, 0x0F /* function */,
-                              start_addr, coil_count, packet);
+                              start_addr, coil_count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
   /* NOTE: Integer division. This is equivalent of determining the ceil(count/8) */
   byte_count = (coil_count+7)/8;
-  packet[query_length] = byte_count;
+  query_packet[query_length] = byte_count;
   
   /* handle groups of 4 bytes... */
   for(i = 0, org_pos = 0; i + 3 < byte_count; i += 4, org_pos++) {
-    packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
-    packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
-    packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
-    packet[++query_length] = data[org_pos] & 0xFF;
+    query_packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
+    query_packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
+    query_packet[++query_length] = data[org_pos] & 0xFF; data[org_pos] >>= 8;
+    query_packet[++query_length] = data[org_pos] & 0xFF;
   }
   /* handle any remaining bytes... */
   for(; i < byte_count; i++) {
-    packet[++query_length] = data[org_pos] & 0xFF; 
+    query_packet[++query_length] = data[org_pos] & 0xFF; 
     data[org_pos] >>= 8;
   }
   
-  response_length = mb_transaction(packet, ++query_length, &rdata, ttyfd, send_retries,
+  response_length = mb_transaction(query_packet, ++query_length, &response_packet, ttyfd, send_retries,
                                    error_code, response_timeout);
   
   if (response_length  < 0)       return response_length;
   if (response_length != 6)       return INVALID_FRAME;
-  if ((rdata[2] != packet[2]) ||
-      (rdata[3] != packet[3]) ||
-      (rdata[4] != packet[4]) ||
-      (rdata[5] != packet[5]))    return INVALID_FRAME;
+  if ((response_packet[2] != query_packet[2]) ||
+      (response_packet[3] != query_packet[3]) ||
+      (response_packet[4] != query_packet[4]) ||
+      (response_packet[5] != query_packet[5]))    return INVALID_FRAME;
   
   return response_length;
 }
@@ -1023,8 +1026,8 @@ int write_output_words(u8  slave,
                        pthread_mutex_t *data_access_mutex) {
   u8  byte_count;
   int i, query_length, response_length;
-  u8 packet[QUERY_BUFFER_SIZE];
-  u8  *rdata;
+  u8 query_packet[QUERY_BUFFER_SIZE];
+  u8  *response_packet;
   
   if( reg_count > MAX_WRITE_REGS ) {
     reg_count = MAX_WRITE_REGS;
@@ -1034,28 +1037,28 @@ int write_output_words(u8  slave,
   }
   
   query_length = build_packet(slave, 0x10 /* function */,
-                              start_addr, reg_count, packet);
+                              start_addr, reg_count, query_packet);
   if (query_length < 0)    return INTERNAL_ERROR;
   
   byte_count = reg_count*2;
-  packet[query_length] = byte_count;
+  query_packet[query_length] = byte_count;
   
   if (NULL != data_access_mutex) pthread_mutex_lock(data_access_mutex);
   for( i = 0; i < reg_count; i++ ) {
-    packet[++query_length] = data[i] >> 8;
-    packet[++query_length] = data[i] & 0x00FF;
+    query_packet[++query_length] = data[i] >> 8;
+    query_packet[++query_length] = data[i] & 0x00FF;
   }
   if (NULL != data_access_mutex) pthread_mutex_unlock(data_access_mutex);
   
-  response_length = mb_transaction(packet, ++query_length, &rdata, ttyfd, send_retries,
+  response_length = mb_transaction(query_packet, ++query_length, &response_packet, ttyfd, send_retries,
                                    error_code, response_timeout);
   
   if (response_length  < 0)       return response_length;  
   if (response_length != 6)       return INVALID_FRAME;  
-  if ((rdata[2] != packet[2]) ||
-      (rdata[3] != packet[3]) ||      
-      (rdata[4] != packet[4]) ||
-      (rdata[5] != packet[5]))    return INVALID_FRAME;
+  if ((response_packet[2] != query_packet[2]) ||
+      (response_packet[3] != query_packet[3]) ||      
+      (response_packet[4] != query_packet[4]) ||
+      (response_packet[5] != query_packet[5]))    return INVALID_FRAME;
   
   return response_length;
 }
@@ -1078,9 +1081,9 @@ int write_output_words_u32(u8  slave,
                            const struct timespec *response_timeout) {
   u8  byte_count;
   int i, query_length, response_length;
-  u8 packet_[QUERY_BUFFER_SIZE];
-  u8 *packet = packet_; /* remove the const'ness of packet_ */
-  u8  *rdata;
+  u8 query_packet_[QUERY_BUFFER_SIZE];
+  u8 *query_packet = query_packet_; /* remove the const'ness of query_packet_ */
+  u8  *response_packet;
   
   if( reg_count > MAX_WRITE_REGS ) {
     reg_count = MAX_WRITE_REGS;
@@ -1091,28 +1094,28 @@ int write_output_words_u32(u8  slave,
   
   /* Make sure that the de-referencing and up-casting going on later on in 
    * this function, i.e. code like the following line:
-   * *((u16 *)packet) = XXX
+   * *((u16 *)query_packet) = XXX
    * will result in u16 words starting off on even addresses.
    * If we don't do this, some compilers (e.g. AVR32 cross-compiler) will 
    * generate code which, when executed, will result in 'bus error'.
    *
-   * The following packet++ means that the first byte of the packet array is
-   * essentially never used. Notice too that the size of thepacket array
+   * The following query_packet++ means that the first byte of the query_packet array is
+   * essentially never used. Notice too that the size of the query_packet array
    * already takes into account this un-used byte.
    */
-  packet++;
+  query_packet++;
   
   query_length = build_packet(slave, 0x10 /* function */,
-                              start_addr, reg_count, packet);
+                              start_addr, reg_count, query_packet);
   if (query_length < 0)  return INTERNAL_ERROR;
   
   byte_count = reg_count*2;
-  packet[query_length] = byte_count;
+  query_packet[query_length] = byte_count;
   
   /* handle groups of 4 bytes... */
   for(i = 0; 4*i + 3 < byte_count; i++) {
-    *((u16 *)(packet+(++query_length))) = mb_hton(data[i]);        ++query_length;
-    *((u16 *)(packet+(++query_length))) = mb_hton(data[i] >> 16);  ++query_length;
+    *((u16 *)(query_packet+(++query_length))) = mb_hton(data[i]);        ++query_length;
+    *((u16 *)(query_packet+(++query_length))) = mb_hton(data[i] >> 16);  ++query_length;
   }
   
   /* handle any remaining bytes...
@@ -1121,18 +1124,18 @@ int write_output_words_u32(u8  slave,
    * this will be either 2, or none at all!
    */
   if (4*i + 1 < byte_count) {
-    *((u16 *)(packet+(++query_length))) = mb_hton(data[i]);        ++query_length;
+    *((u16 *)(query_packet+(++query_length))) = mb_hton(data[i]);        ++query_length;
   }
   
-  response_length = mb_transaction(packet, ++query_length, &rdata, ttyfd, send_retries,
+  response_length = mb_transaction(query_packet, ++query_length, &response_packet, ttyfd, send_retries,
                                    error_code, response_timeout);
     
   if (response_length  < 0)       return response_length;  
   if (response_length != 6)       return INVALID_FRAME;  
-  if ((rdata[2] != packet[2]) ||
-      (rdata[3] != packet[3]) ||
-      (rdata[4] != packet[4]) ||
-      (rdata[5] != packet[5]))    return INVALID_FRAME;
+  if ((response_packet[2] != query_packet[2]) ||
+      (response_packet[3] != query_packet[3]) ||
+      (response_packet[4] != query_packet[4]) ||
+      (response_packet[5] != query_packet[5]))    return INVALID_FRAME;
   
   return response_length;
 }
