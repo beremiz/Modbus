@@ -21,18 +21,18 @@
  */
 
 
-
 #include <fcntl.h>      /* File control definitions */
 #include <stdio.h>      /* Standard input/output */
 #include <string.h>
 #include <stdlib.h>
 #include <termio.h>     /* POSIX terminal control definitions */
 #include <sys/time.h>   /* Time structures for select() */
-#include <unistd.h>     /* POSIX Symbolic Constants */
+#include <unistd.h>     /* POSIX Symbolic Constants... */
 #include <assert.h>
 #include <errno.h>      /* Error definitions */
 #include <time.h>       /* clock_gettime()   */
 #include <limits.h>     /* required for INT_MAX */
+#include <sys/uio.h>    /* required for writev() */
 
 #include <netinet/in.h> /* required for htons() and ntohs() */
 
@@ -716,16 +716,16 @@ static inline u16 crc_read(u8 *buf, int cnt) {
 /************************************/
 
 /* NOTE: cnt is number of bytes in the frame _excluding_ CRC! */
-static inline void crc_write(u8 *buf, int cnt) {
+static inline void crc_write(u8 *crc_buf, u8 *data_buf, int data_cnt) {
   /* For some strange reason, the crc is transmited
    * LSB first, unlike all other values...
    *
    * u16_v(query[string_length]) = mb_hton(temp_crc);  -> This is wrong !!
    */
   /* NOTE: We have already checked above that RTU_FRAME_CRC_LENGTH is >= 2 */
-  u16 crc = crc_calc(buf, cnt);
-  buf[cnt]   = lsb(crc);
-  buf[cnt+1] = msb(crc);
+  u16 crc = crc_calc(data_buf, data_cnt);
+  crc_buf[0] = lsb(crc);
+  crc_buf[1] = msb(crc);
 }
 
 
@@ -980,6 +980,7 @@ int modbus_rtu_write(int    nd,
   struct timeval timeout;
   int res, send_retries;
   nd_entry_t *nd_entry;
+  u8 crc_buf[RTU_FRAME_CRC_LENGTH];
 
 #ifdef DEBUG
   fprintf(stderr, "modbus_rtu_write(fd=%d) called...\n", nd);
@@ -992,44 +993,10 @@ int modbus_rtu_write(int    nd,
   if (nd_entry->fd < 0)
     return -1;
 
-  /**************************
-  * append crc to frame... *
+  /*************************
+  * prepare the crc buffer *
   **************************/
-/* WARNING:
- *     The crc_write() function assumes that we have an extra
- *     RTU_FRAME_CRC_LENGTH free bytes at the end of the *data
- *     buffer.
- *     The caller of this function had better make sure he has
- *     allocated those extra bytes, or a segmentation fault will
- *     occur.
- *     Please read on why we leave this as it is...
- *
- * REASONS:
- *     We want to write the data and the crc in a single call to
- *     the OS. This is the only way we can minimally try to gurantee
- *     that we will not be introducing a silence of more than 1.5
- *     character transmission times between any two characters.
- *
- *     We could do the above using one of two methods:
- *       (a) use a special writev() call in which the data
- *           to be sent is stored in two buffers (one for the
- *           data and the other for the crc).
- *       (b) place all the data in a single linear buffer and
- *           use the normal write() function.
- *
- *     We cannot use (a) since the writev(2) function does not seem
- *     to be POSIX compliant...
- *     (b) has the drawback that we would need to allocate a new buffer,
- *      and copy all the data into that buffer. We have enough copying of
- *      data between buffers as it is, so we won't be doing it here
- *      yet again!
- *
- *      The only option that seems left over is to have the caller
- *      of this function allocate a few extra bytes. Let's hope he
- *      does not forget!
-*/
-  crc_write(data, data_length);
-  data_length += RTU_FRAME_CRC_LENGTH;
+  crc_write(crc_buf, data, data_length);
 
 #ifdef DEBUG
 /* Print the hex value of each character that is about to be
@@ -1038,6 +1005,8 @@ int modbus_rtu_write(int    nd,
   { int i;
     for(i = 0; i < data_length; i++)
       fprintf(stderr, "[0x%2X]", data[i]);
+    for(i = 0; i < RTU_FRAME_CRC_LENGTH; i++)
+      fprintf(stderr, "[0x%2X]", crc_buf[i]);
     fprintf(stderr, "\n");
   }
 #endif
@@ -1131,7 +1100,17 @@ int modbus_rtu_write(int    nd,
      * write to output... *
      **********************/
      /* Please see the comment just above the main loop!! */
-    if ((res = write(nd_entry->fd, data, data_length)) != data_length) {
+     /* We want to write() both the data/frame and the CRC with the same call 
+      * to the operating system to try to eliminate any delay between transmitting 
+      * the bytes in the frame. We therefore use writev() instead.
+      */
+    struct iovec iov[2];
+    iov[0].iov_base = data;
+    iov[0].iov_len  = data_length;
+    iov[1].iov_base = crc_buf;
+    iov[1].iov_len  = RTU_FRAME_CRC_LENGTH;
+
+    if ((res = writev(nd_entry->fd, iov, 2)) != (data_length+RTU_FRAME_CRC_LENGTH)) {
       if ((res < 0) && (errno != EAGAIN ) && (errno != EINTR ))
         return -1;
     } else {
@@ -1147,7 +1126,7 @@ int modbus_rtu_write(int    nd,
        *        to the query we have just sent!
        *        Not a good thing at all... ;-)
        */
-      return data_length - RTU_FRAME_CRC_LENGTH;
+      return data_length;
     }
     /* NOTE: The maximum inter-character delay of 1.5 character times
      *       has most probably been exceeded, so we abort the frame and
