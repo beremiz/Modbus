@@ -1610,8 +1610,7 @@ static void set_defaults(int *baud,
 /******************************/
 
 int modbus_ascii_init(int nd_count,
-                      optimization_t opt,
-                      int *extra_bytes)
+                      optimization_t opt)
 {
 #ifdef DEBUG
   printf("modbus_asc_init(): called...\n");
@@ -1623,22 +1622,12 @@ int modbus_ascii_init(int nd_count,
 #endif
 
     /* check input parameters...*/
-  if (0 == nd_count) {
-    if (extra_bytes != NULL)
-      // Not the corect value for this layer. 
-      // What we set it to in case this layer is not used!
-      *extra_bytes = 0; 
-    return 0;
-  }
-  if (nd_count <= 0)
-    goto error_exit_0;
-
-  if (extra_bytes == NULL)
-    goto error_exit_0;
+  if (0 == nd_count)    return  0;
+  if (nd_count <= 0)    return -1;
 
     /* initialise nd table... */
   if (nd_table_init(&nd_table_, nd_count) < 0)
-    goto error_exit_0;
+    return -1;
 
     /* remember the optimization choice for later reference... */
   optimization_ = opt;
@@ -1647,11 +1636,6 @@ int modbus_ascii_init(int nd_count,
   printf("modbus_asc_init(): returning succesfuly...\n");
 #endif
   return 0;
-
-error_exit_0:
-  if (extra_bytes != NULL)
-    *extra_bytes = 0; // The value we set this to in case of error.
-  return -1;
 }
 
 

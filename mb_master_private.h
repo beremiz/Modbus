@@ -38,7 +38,7 @@
 #define DEF_OPTIMIZATION        optimize_speed
 
 
-int mb_master_init__(int extra_bytes);
+int mb_master_init__(void);
 int mb_master_done__(void);
 
 

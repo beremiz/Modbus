@@ -1453,8 +1453,8 @@ static void set_defaults(const char **service) {
  * returns -1 on error.
  */
 int modbus_tcp_init(int nd_count,
-                    optimization_t opt /* ignored... */,
-                    int *extra_bytes) {
+                    optimization_t opt /* ignored... */
+                    ) {
 #ifdef DEBUG
   printf("[%lu] modbus_tcp_init(): called...\n", pthread_self());
   printf("[%lu] creating %d nodes:\n", pthread_self(), nd_count);
@@ -1462,27 +1462,12 @@ int modbus_tcp_init(int nd_count,
 
   modbus_tcp_init_counter++;
   
-    /* set the extra_bytes value... */
-    /* Please see note before the modbus_rtu_write() function for a
-     * better understanding of this extremely ugly hack... This will be
-     * in the mb_rtu.c file!!
-     *
-     * The number of extra bytes that must be allocated to the data buffer
-     * before calling modbus_tcp_write()
-     */
-  if (extra_bytes != NULL)
-    *extra_bytes = 0;
-
-  if (0 == nd_count)
-    /* no need to initialise this layer! */
-    return 0;
-  if (nd_count <= 0)
-    /* invalid node count... */
-    goto error_exit_1;
+  if (0 == nd_count)  return  0;   /* no need to initialise this layer! */
+  if (nd_count <= 0)  return -1;   /* invalid node count... */
 
   /* initialise the node table... */
   if (nd_table_init(&nd_table_, nd_count) < 0)
-    goto error_exit_1;
+    return -1;
 
 #ifdef DEBUG
   printf("[%lu] modbus_tcp_init(): %d node(s) opened succesfully\n", pthread_self(), nd_count);
@@ -1490,13 +1475,10 @@ int modbus_tcp_init(int nd_count,
   return nd_count; /* number of succesfully created nodes! */
 
 /*
-error_exit_2:
-  nd_table_done(&nd_table_);
-*/
 error_exit_1:
-  if (extra_bytes != NULL)
-    *extra_bytes = 0;
+  nd_table_done(&nd_table_);
   return -1;
+*/
 }
 
 

@@ -103,8 +103,7 @@ int modbus_read(int *nd,                /* node descriptor */
 
  /* init the library */
 int modbus_init(int nd_count,        /* maximum number of nodes... */
-                optimization_t opt,
-                int *extra_bytes);
+                optimization_t opt);
 
  /* shutdown the library...*/
 int modbus_done(void);

@@ -38,7 +38,7 @@
 
 
 
-int mb_slave_init__(int extra_bytes);
+int mb_slave_init__(void);
 int mb_slave_done__(void);
 
 

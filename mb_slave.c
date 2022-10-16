@@ -65,14 +65,7 @@
 /**                                      **/
 /******************************************/
 /******************************************/
-/* The layer 1 (RTU, ASCII, TCP) implementations will be adding some 
- *  header and tail bytes (e.g. CRC) to the packet we build here. Since
- *  layer1 will re-use the same buffer allocated in this slave layer 
- *  (so as not to continuosly copy the same info from buffer to buffer),
- *  we need to allocate more bytes than those strictly required for this
- *  slave layer. Therefore, the extra_bytes parameter.
- *
- *  Note that we add one more extra byte to the response buffer.
+/*  Note that we add one more extra byte to the response buffer.
  *  This is because some response packets will not be starting off
  *  at byte 0, but rather at byte 1 of the buffer. This is in order
  *  to guarantee that the data that is sent on the buffer is aligned
@@ -82,8 +75,7 @@
  *  'bus error' messages in some embedded devices that do not allow
  *   acessing u16 on odd numbered addresses.
  */
-static int buff_extra_bytes_;
-#define RESP_BUFFER_SIZE       (MAX_L2_FRAME_LENGTH + buff_extra_bytes_ + 1)
+#define RESP_BUFFER_SIZE       (MAX_L2_FRAME_LENGTH + 1)
 
 /******************************************/
 /******************************************/
@@ -647,14 +639,8 @@ int handle_write_output_words(u8 *query_packet, int query_packet_len, u8 **resp_
 /***********************************************/
 /***********************************************/
 
-int mb_slave_init__(int extra_bytes) {
-  buff_extra_bytes_ = extra_bytes;
-  return 0;
-}
-
-
-int mb_slave_done__(void) 
-  {return 0;}
+int mb_slave_init__(void) {return 0;}
+int mb_slave_done__(void) {return 0;}
 
 
 #if 0

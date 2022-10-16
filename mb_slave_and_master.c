@@ -106,7 +106,6 @@ layer1_funct_ptr_t fptr_[4] = {
 #define max(a,b) (((a)>(b))?(a):(b))
 
 int mb_slave_and_master_init(int nd_count_tcp, int nd_count_rtu, int nd_count_ascii) {
-        int extra_bytes, extra_bytes_tcp, extra_bytes_rtu, extra_bytes_ascii;
 
 #ifdef DEBUG
 	fprintf( stderr, "mb_slave_and_master_init()\n");
@@ -114,20 +113,13 @@ int mb_slave_and_master_init(int nd_count_tcp, int nd_count_rtu, int nd_count_as
 #endif
 
             /* initialise layer 1 library */
-	if (modbus_tcp_init  (nd_count_tcp,   DEF_OPTIMIZATION, &extra_bytes_tcp  ) < 0)
-		goto error_exit_0;
-	if (modbus_rtu_init  (nd_count_rtu,   DEF_OPTIMIZATION, &extra_bytes_rtu  ) < 0)
-		goto error_exit_1;
-	if (modbus_ascii_init(nd_count_ascii, DEF_OPTIMIZATION, &extra_bytes_ascii) < 0)
-		goto error_exit_2;
-	extra_bytes= max(extra_bytes_tcp, extra_bytes_rtu);
-	extra_bytes= max(extra_bytes    , extra_bytes_ascii);
+	if (modbus_tcp_init  (nd_count_tcp,   DEF_OPTIMIZATION) < 0)  goto error_exit_0;
+	if (modbus_rtu_init  (nd_count_rtu,   DEF_OPTIMIZATION) < 0)  goto error_exit_1;
+	if (modbus_ascii_init(nd_count_ascii, DEF_OPTIMIZATION) < 0)  goto error_exit_2;
 
             /* initialise master and slave libraries... */
-	if (mb_slave_init__(extra_bytes) < 0)
-		goto error_exit_3;
-	if (mb_master_init__(extra_bytes) < 0)
-		goto error_exit_4;
+	if (mb_slave_init__ () < 0)  goto error_exit_3;
+	if (mb_master_init__() < 0)  goto error_exit_4;
 	return 0;
 
 /*

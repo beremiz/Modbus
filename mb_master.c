@@ -65,20 +65,13 @@
 /**                                      **/
 /******************************************/
 /******************************************/
-   /* The layer 1 (RTU, ASCII, TCP) implementation will be adding some headers and CRC (at the end)
-    *  of the packet we build here (actually currently it is only at the end). Since we want to 
-    *  re-use the same buffer so as not to continuosly copy the same info from buffer to buffer,
-    *  we need tp allocate more bytes than the ones we need for this layer. Therefore, the
-    *  extra_bytes parameter.
-    *
-    *  Note that we add one more extra byte. This is because some packets will not be 
+   /*  Note that we add one more extra byte. This is because some packets will not be 
     *  starting off at byte 0, but rather at byte 1 of the buffer. This is in order to guarantee
     *  that the data that is sent on the buffer is aligned on even bytes (the 16 bit words!).
     *  This will allow us to reference this memory as an u16 *, without producing 'bus error'
     *  messages in some embedded devices that do not allow acessing u16 on odd numbered addresses.
     */ 
-static int buff_extra_bytes_;
-#define QUERY_BUFFER_SIZE       (MAX_L2_FRAME_LENGTH + buff_extra_bytes_ + 1)
+#define QUERY_BUFFER_SIZE       (MAX_L2_FRAME_LENGTH + 1)
 
 
 /******************************************/
@@ -1156,11 +1149,10 @@ int write_output_words_u32(u8  slave,
 
 
 /* Initialise the Modbus Master Layer */
-int mb_master_init__(int extra_bytes) {
+int mb_master_init__() {
   #ifdef DEBUG
-  fprintf(stderr, "mb_master_init__(extra_bytes=%d), QUERY_BUFFER_SIZE=%d\n", extra_bytes, QUERY_BUFFER_SIZE);
+  fprintf(stderr, "mb_master_init__(), QUERY_BUFFER_SIZE=%d\n", QUERY_BUFFER_SIZE);
   #endif
-  buff_extra_bytes_ = extra_bytes;
   return 0;
 }
 
