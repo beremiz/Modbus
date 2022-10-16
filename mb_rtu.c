@@ -1534,12 +1534,12 @@ static inline int read_frame(nd_entry_t *nd_entry,
   /* assume error... */
   *recv_data_ptr = NULL;
 
-  /*===================================*
-   * Delete any previously received data that has already been returned as a valid frame in *
-   *===================================*/  
+  /*======================================*
+   * Delete any previously processed data *
+   *======================================*/  
    /* Delete any previously received data that has already been returned as a valid frame in 
     * the previous invocation of read_frame().
-	* Notice that the data that will be deleted hass ben marked for deletion by calling
+	* Notice that the data that will be deleted has been marked for deletion by calling
 	* lb_data_mark_for_purge() in return_frame()
 	*/
   lb_data_purge(&(recv_buf->data_buf), 0);
